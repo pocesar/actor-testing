@@ -7,7 +7,7 @@
             "title": "Test spec",
             "type": "string",
             "description": "Write your tests here like you would in a .spec jasmine file. Refer to the README for matchers information",
-            "default": "({ it, run, expectAsync, describe, expect }) => {\n\nit('is my test', async () => {\n  const result = await run({ taskId: 'task-id' });\n  await expectAsync(result).toHaveDatasetCount(global.any.greaterThanOrEqualTo(0));\n}) \n\n}",
+            "prefill": "({ it, run, expectAsync, describe, expect }) => {\n\nit('is my test', async () => {\n  const result = await run({ taskId: 'task-id' });\n  await expectAsync(result).toHaveDatasetCount(global.any.greaterThanOrEqualTo(0));\n}) \n\n}",
             "editor": "javascript"
         },
         "defaultTimeout": {
@@ -31,5 +31,5 @@
             "editor": "textfield"
         }
     },
-    "required": []
+    "required": ["testSpec"]
 }
