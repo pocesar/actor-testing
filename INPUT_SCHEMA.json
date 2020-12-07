@@ -1,0 +1,35 @@
+{
+    "title": "Input schema for the apify_project actor.",
+    "type": "object",
+    "schemaVersion": 1,
+    "properties": {
+        "testSpec": {
+            "title": "Test spec",
+            "type": "string",
+            "description": "Write your tests here like you would in a .spec jasmine file. Refer to the README for matchers information",
+            "default": "({ it, run, expectAsync, describe, expect }) => {\n\nit('is my test', async () => {\n  const result = await run({ taskId: 'task-id' });\n  await expectAsync(result).toHaveDatasetCount(global.any.greaterThanOrEqualTo(0));\n}) \n\n}",
+            "editor": "javascript"
+        },
+        "defaultTimeout": {
+            "title": "Default timeout",
+            "description": "Changes the default timeout for each individual test, in milliseconds. Defaults to 5 minutes",
+            "default": 300000,
+            "type": "integer",
+            "editor": "number"
+        },
+        "filter": {
+            "title": "Filter tests",
+            "description": "You can filter tests providing their names here",
+            "type": "array",
+            "default": [],
+            "editor": "stringList"
+        },
+        "token": {
+            "title": "Token",
+            "description": "Optional account token",
+            "type": "string",
+            "editor": "textfield"
+        }
+    },
+    "required": []
+}

@@ -1,0 +1,28 @@
+{
+	"name": "actor-testing",
+	"version": "0.0.1",
+	"description": "This is a boilerplate of an Apify actor.",
+	"dependencies": {
+		"@types/jasmine": "^3.6.2",
+		"apify": "^0.21.9",
+		"jasmine": "^3.6.3",
+		"jasmine-expect": "^5.0.0",
+		"jasmine-spec-reporter": "^6.0.0",
+		"xxhash-addon": "^1.3.0"
+	},
+	"devDependencies": {
+		"@apify/eslint-config": "^0.1.3",
+		"eslint": "^7.14.0"
+	},
+	"scripts": {
+		"start": "node src/main.js",
+		"lint": "./node_modules/.bin/eslint ./src --ext .js,.jsx",
+		"lint:fix": "./node_modules/.bin/eslint ./src --ext .js,.jsx --fix",
+		"test": "echo \"Error: oops, the actor has no tests yet, sad!\" && exit 1"
+	},
+	"author": {
+		"name": "Paulo Cesar",
+		"url": "https://github.com/pocesar"
+	},
+	"license": "Apache-2.0"
+}
