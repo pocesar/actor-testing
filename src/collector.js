@@ -38,7 +38,7 @@ module.exports = class {
 
     jasmineDone(suiteInfo, done) {
         this.onComplete(this.masterResults, suiteInfo).then(done, (e) => {
-            console.log(e);
+            console.error(e);
             done();
         });
     }

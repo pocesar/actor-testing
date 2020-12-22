@@ -60,18 +60,18 @@ The testing interface is familiar with Jasmine BDD tests, but with Apify specifi
          */
 
         // reads the OUTPUT key
-        await expectAsync(myTaskResult).withOutput(async ({ contentType, body }) => {
+        await expectAsync(myTaskResult).withOutput(async ({ contentType, value }) => {
             expect(contentType)
                 // withContext give more information about of what you're testing
                 .withContext(myTaskResult.format('Body should be utf-8 JSON'))
                 .toEqual('application/json; charset=utf-8');
 
-            expect(body).toEqual({ hello: 'world' }, myTaskResult.format('Output body'));
+            expect(value).toEqual({ hello: 'world' }, myTaskResult.format('Output body'));
         });
 
         // reads any key
-        await expectAsync(myTaskResult).withKeyValueStore(async ({ key, contentType, body }) => {
-            expect(body).toEqual({ status: true });
+        await expectAsync(myTaskResult).withKeyValueStore(async ({ key, contentType, value }) => {
+            expect(value).toEqual({ status: true });
         }, { key: 'INPUT' });
 
         // gets requestQueue information
@@ -306,7 +306,7 @@ The info object contains:
 N.B.: this method waits at least 12 seconds to be able to read from the remote storage and make sure
 it's ready to be accessed after the task/actor has finished running using `run`
 
-#### withOutput((output: { body: any, contentType: string }) => void)
+#### withOutput((output: { value: any, contentType: string }) => void)
 Returns the `OUTPUT` key of the run. Can have any content type, check the contentType
 
 #### withStatistics((stats: Object) => void, options?: { index: number = 0 })
@@ -342,7 +342,7 @@ Returns an object like this:
 }
 ```
 
-#### withKeyValueStore((output: { body: any, contentType: string }) => void, options: { keyName: string })
+#### withKeyValueStore((output: { value: any, contentType: string }) => void, options: { keyName: string })
 Returns the content of the selected keyName. The test fails if the key doesn't exist.
 You can access the INPUT that was used for the run using `{ keyName: 'INPUT' }`
 

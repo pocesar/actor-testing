@@ -137,7 +137,7 @@ const withChecker = generateCompare(async ({ result, value, args, runFn, client,
 
     return callbackValue({
         value,
-        args: { runResult, output: record.body || {} },
+        args: { runResult, output: record.value || {} },
         format,
     });
 });
@@ -182,7 +182,7 @@ const withDuplicates = generateCompare(async ({ result, value, args, runFn, clie
 
     return callbackValue({
         value,
-        args: { runResult, output: record.body || {} },
+        args: { runResult, output: record.value || {} },
         format,
     });
 });
@@ -229,7 +229,7 @@ const withStatistics = generateCompare(async ({ result, value, client, format, a
 
     return callbackValue({
         value,
-        args: record.body || {},
+        args: record.value || {},
         format,
     });
 });
