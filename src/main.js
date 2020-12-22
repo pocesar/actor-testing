@@ -1,14 +1,74 @@
 const Apify = require('apify');
 const Jasmine = require('jasmine');
-const { SpecReporter } = require('jasmine-spec-reporter');
+const ApifyClient = require('apify-client');
+const { SpecReporter, StacktraceOption } = require('jasmine-spec-reporter');
+const vm = require('vm');
+const _ = require('lodash');
+const moment = require('moment');
 const Loader = require('jasmine/lib/loader');
 const { setupJasmine } = require('./matchers');
 const setupRun = require('./run');
 const JSONReporter = require('./collector');
+const { collectFailed } = require('./common');
 
 Apify.main(async () => {
+    /** @type {any} */
     const input = await Apify.getInput();
-    const { defaultTimeout = 300000, filter } = input;
+    const {
+        defaultTimeout = 300000,
+        filter,
+        verboseLogs = true,
+        isAbortSignal = false,
+        abortRuns = true,
+    } = input;
+
+    /** @type {string} */
+    const token = input.token || Apify.getEnv().token;
+    const client = new ApifyClient({
+        token,
+    });
+
+    const defaultFilename = 'test.js';
+
+    if (Apify.isAtHome() && abortRuns) {
+        // we need to stop pending runs from the remote aborted/timed-out run
+        if (isAbortSignal) {
+            const remoteKv = await Apify.openKeyValueStore(input.kv);
+            const calls = new Map(await remoteKv.getValue('CALLS'));
+            for (const { runId } of calls.values()) {
+                Apify.utils.log.info(`Aborting run ${runId}`);
+                await client.run(runId).abort();
+            }
+            return;
+        }
+
+        // dynamicly webhook ourselves so we can catch the CALLS from outside and abort them
+        await Apify.addWebhook({
+            eventTypes: ['ACTOR.RUN.ABORTED', 'ACTOR.RUN.TIMED_OUT'],
+            requestUrl: `https://api.apify.com/v2/acts/${Apify.getEnv().actorId}/runs?token=${token}`,
+            idempotencyKey: Apify.getEnv().actorRunId,
+            payloadTemplate: JSON.stringify({
+                isAbortSignal: true,
+                token,
+                kv: Apify.getEnv().defaultKeyValueStoreId,
+            }),
+        });
+    }
+
+    let testName = 'Actor tests';
+
+    if (!input.testName) {
+        const thisTaskId = Apify.getEnv().actorTaskId;
+        if (thisTaskId) {
+            const { name } = await client.task(thisTaskId).get();
+
+            if (name) {
+                testName = name;
+            }
+        }
+    } else {
+        testName = input.testName;
+    }
 
     // hacking jasmine internals to accept non-existing files
     const instance = new Jasmine({
@@ -24,49 +84,86 @@ Apify.main(async () => {
 
     instance.env.clearReporters();
 
-    instance.addReporter(new SpecReporter({ // add jasmine-spec-reporter
+    const specReporter = new SpecReporter({ // add jasmine-spec-reporter
         spec: {
-            displaySuccessful: true,
-            displayFailed: true,
-            displayPending: true,
+            displaySuccessful: false,
+            displayFailed: false,
+            displayPending: false,
             displayDuration: true,
-            displayStacktrace: 'none',
+            displayStacktrace: StacktraceOption.NONE,
         },
         summary: {
             displayDuration: true,
-            displayErrorMessages: false,
-            displaySuccessful: false,
-            displayPending: false,
-            displayStacktrace: 'none',
-            displayFailed: false,
+            displayErrorMessages: true,
+            displaySuccessful: verboseLogs,
+            displayPending: verboseLogs,
+            displayStacktrace: StacktraceOption.RAW,
+            displayFailed: true,
         },
-    }));
+        stacktrace: {
+            filter(stacktrace) {
+                return stacktrace.split('\n').filter((line) => line.includes(`at ${defaultFilename}`)).join('\n');
+            },
+        },
+    });
 
-    instance.addReporter(new JSONReporter(async (testResult) => {
-        await Apify.setValue('OUTPUT', testResult);
-    }));
+    instance.addReporter(specReporter);
 
-    const token = input.token || Apify.getEnv().token;
+    const jsonReporter = new JSONReporter(
+        async (testResult) => {
+            const failed = collectFailed(testResult);
+
+            await Apify.setValue('OUTPUT', testResult);
+
+            if (failed.length && input.slackToken && input.slackChannel) {
+                Apify.utils.log.info(`Posting to channel ${input.slackChannel}`);
+
+                await Apify.call('katerinahronik/slack-message', {
+                    token: input.slackToken,
+                    channel: input.slackChannel,
+                    text: `<https://my.apify.com/view/runs/${Apify.getEnv().actorRunId}|${testName}> has ${
+                        failed.length
+                    } failing tests. Check the <https://api.apify.com/v2/key-value-stores/${
+                        Apify.getEnv().defaultKeyValueStoreId
+                    }/records/OUTPUT?disableRedirect=true|OUTPUT> for full details.\n${failed.join('\n')}`,
+                });
+            }
+        },
+        verboseLogs,
+    );
+
+    instance.addReporter(jsonReporter);
 
     jasmine.DEFAULT_TIMEOUT_INTERVAL = defaultTimeout;
-    const runFn = await setupRun(Apify, token);
+    const runFn = await setupRun(Apify, client, verboseLogs);
 
     // jasmine executes everything as global, so we just eval it here
     ((context) => {
         const { describe, beforeAll } = context;
 
-        describe('Actor tests', () => {
+        describe(testName, () => {
             beforeAll(() => {
                 setupJasmine(
                     instance,
-                    token,
+                    client,
                     runFn,
                 );
             });
 
-            eval(input.testSpec)({ // eslint-disable-line no-eval
+            const script = new vm.Script(input.testSpec, {
+                displayErrors: true,
+                lineOffset: 0,
+                filename: defaultFilename,
+            });
+
+            script.runInThisContext()({
                 ...context,
-                input,
+                input: {
+                    ...input,
+                    customData: input.customData || {},
+                },
+                _,
+                moment,
             });
         });
     })({
@@ -74,10 +171,10 @@ Apify.main(async () => {
         run: runFn,
     });
 
-    instance.addSpecFile('test.js');
+    instance.addSpecFile(defaultFilename);
     instance.helperFiles.push('jasmine-expect');
     instance.randomizeTests(false);
     instance.stopSpecOnExpectationFailure(false);
 
-    await instance.execute(undefined, filter);
+    await instance.execute(undefined, (filter || []).join('|') || undefined);
 });

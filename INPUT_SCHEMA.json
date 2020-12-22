@@ -7,8 +7,15 @@
             "title": "Test spec",
             "type": "string",
             "description": "Write your tests here like you would in a .spec jasmine file. Refer to the README for matchers information",
-            "prefill": "({ it, run, expectAsync, describe, expect }) => {\n    it('should work', async () => {\n        const result = await run({\n            actorId: 'my-actor-id',\n            input: {\n                data: 'hello',\n            },\n        });\n\n        await expectAsync(result).toHaveStatus('SUCCEEDED');\n    });\n}",
+            "prefill": "({ it, run, expectAsync, input, describe, expect, _, moment }) => {\n    // can add more build tags here, like beta\n    [\n        'latest',\n    ].forEach((build) => {\n        describe(`${build} version`, () => {\n            it('check hello data input', async () => {\n                const result = await run({\n                    taskId: 'your-task-id',\n                    input: {\n                        data: 'hello',\n                    },\n                    options: {\n                        build,\n                    },\n                });\n\n                await expectAsync(result).toHaveStatus('SUCCEEDED');\n\n                await expectAsync(result).withDataset(({ dataset, info }) => {\n                    expect(info.cleanItemCount).toBeGreaterThan(0, result.format('Dataset clean item count'));\n\n                    expect(dataset.items)\n                        .withContext(result.format('Dataset items array'))\n                        .toBeArrayOfSize(1);\n\n                    expect(dataset.items[0])\n                        .withContext(result.format('First item shape'))\n                        .toEqual({\n                            data: 'hello',\n                        });\n                });\n\n                await expectAsync(result).withLog((log) => {\n                    expect(log).not.toContain('ReferenceError', result.format('Log ReferenceError'));\n\n                    expect(log).not.toContain('TypeError', result.format('Log TypeError'));\n                });\n            });\n        });\n    });\n}",
             "editor": "javascript"
+        },
+        "testName": {
+            "title": "Test Name",
+            "description": "Pick a descriptive name for this test suite. Otherwise the task name will be used",
+            "default": "",
+            "type": "string",
+            "editor": "textfield"
         },
         "defaultTimeout": {
             "title": "Default timeout",
@@ -17,12 +24,46 @@
             "type": "integer",
             "editor": "number"
         },
+        "verboseLogs": {
+            "title": "Verbose Log",
+            "description": "Print progress information",
+            "type": "boolean",
+            "default": true,
+            "editor": "checkbox"
+        },
+        "abortRuns": {
+            "title": "Abort runs",
+            "type": "boolean",
+            "default": true,
+            "description": "Aborts the underlying actor runs upon aborting this actor as well",
+            "editor": "checkbox"
+        },
+        "customData": {
+            "title": "Custom data",
+            "description": "Anything you may want to access through input.customData inside tests",
+            "default": {},
+            "type": "object",
+            "editor": "json"
+        },
         "filter": {
             "title": "Filter tests",
             "description": "You can filter tests providing their names here",
             "type": "array",
             "default": [],
             "editor": "stringList"
+        },
+        "slackToken": {
+            "title": "Slack token",
+            "description": "Slack token",
+            "type": "string",
+            "editor": "textfield"
+        },
+        "slackChannel": {
+            "title": "Slack channel",
+            "description": "Slack channel",
+            "prefill": "#public-actors-tests-notifications",
+            "type": "string",
+            "editor": "textfield"
         },
         "token": {
             "title": "Token",

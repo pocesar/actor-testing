@@ -26,26 +26,31 @@ be run in a scheduled manner for best results.
 The testing interface is familiar with Jasmine BDD tests, but with Apify specific async matchers:
 
 ```js
-({ it, run, expect, expectAsync, jasmine, describe }) => {
+({
+    it,
+    run,
+    expectAsync,
+    input, // Object containing the current input, you can access customData here
+    describe, // describe subsections
+    expect, // default Jasmine expect
+    _, // lodash as a helper to traverse array items and objects
+    moment // Moment.JS to help with dates and time math
+}) => {
 
   // describe is not needed, but it's good to keep everything tidy
   describe('sub', () => {
 
     it('should have preconfigured task working', async () => {
-        // can run multiple tasks/actors inside the same test, but
-        // it's advised to split them in multiple suites
-        const [myTaskResult, myActorResult] = await Promise.all([
-            run({ taskId: 'myuser/my-task-name' }),
-            run({
-                actorId: 'myActorId',
-                input: {
-                    some: 'extra input'
-                },
-                options: {
-                    timeout: 15000
-                }
-            })
-        ])
+        const myTaskResult = await run({
+            // actorId: 'actor/from-store', // can use an actorId directly
+            taskId: 'myuser/my-task-name',
+            input: {
+                some: 'extra input' // optional overrides
+            },
+            options: {
+                timeout: 15000 // optional call options
+            }
+        });
 
         // sync assertions, not very useful, expections should have inside async assertions
         expect(myTaskResult.runId).not.toBeEmptyString();
@@ -56,8 +61,12 @@ The testing interface is familiar with Jasmine BDD tests, but with Apify specifi
 
         // reads the OUTPUT key
         await expectAsync(myTaskResult).withOutput(async ({ contentType, body }) => {
-            expect(contentType).toEqual('application/json; charset=utf-8');
-            expect(body).toEqual({ hello: 'world' });
+            expect(contentType)
+                // withContext give more information about of what you're testing
+                .withContext(myTaskResult.format('Body should be utf-8 JSON'))
+                .toEqual('application/json; charset=utf-8');
+
+            expect(body).toEqual({ hello: 'world' }, myTaskResult.format('Output body'));
         });
 
         // reads any key
@@ -86,7 +95,7 @@ The testing interface is familiar with Jasmine BDD tests, but with Apify specifi
         });
 
         // Check for dataset consistency
-        await expectAsync(myTaskResult).withChecker(({ output }) => {
+        await expectAsync(myTaskResult).withChecker(({ runResult, output }) => {
             expect(output.badItemCount).toBe(0);
         }, {
             functionalChecker: () => ({
@@ -95,7 +104,7 @@ The testing interface is familiar with Jasmine BDD tests, but with Apify specifi
         });
 
         // Check for duplicate items
-        await expectAsync(myTaskResult).withDuplicates(({ output }) => {
+        await expectAsync(myTaskResult).withDuplicates(({ runResult, output }) => {
             expect(output).toEqual({});
         }, {
             taskId: 'myTaskId'
@@ -130,13 +139,13 @@ They abstract many common platform API calls. All callbacks can be plain closure
 
 You also have full access to the Apify variable inside your tests.
 
-#### `toHaveStatus(status: 'SUCCEEDED' | 'FAILED' | 'ABORTED' | 'TIMED-OUT')`
+#### toHaveStatus(status: 'SUCCEEDED' | 'FAILED' | 'ABORTED' | 'TIMED-OUT')
 Checks for the proper run status
 
-#### `withLog((logContent: string) => void)`
+#### withLog((logContent: string) => void)
 Run expectations on the `logContent`
 
-#### `withDuplicates((result: { runResult: Object, output: Object }) => void, input?: Object)`
+#### withDuplicates((result: { runResult: Object, output: Object }) => void, input?: Object)
 Ensures that no duplicates are found. You can provide a `taskId` with a pre-configured task or you can
 provide all the input manually according to the docs [here](https://apify.com/lukaskrivka/duplications-checker/input-schema)
 By default, anything above 2 counted items are considered duplicates
@@ -202,7 +211,7 @@ Returns the `OUTPUT` of the run, containing an object like this:
 }
 ```
 
-#### `withChecker((result: { runResult: Object, output: Object }) => void, input: Object, options?: Object)`
+#### withChecker((result: { runResult: Object, output: Object }) => void, input: Object, options?: Object)
 Input is required and you need at least a `taskId` parameter pointing to a
 pre-configured results-checker task or you can pass everything to the input.
 Check the docs [here](https://apify.com/lukaskrivka/results-checker/input-schema)
@@ -251,7 +260,7 @@ Returns the `OUTPUT` of the run, containing an object like this:
   "badItems": "https://api.apify.com/v2/key-value-stores/_/records/BAD-ITEMS?disableRedirect=true"
 ```
 
-#### `withDataset((result: { dataset: Object, info: Object }) => void, options?: Object)`
+#### withDataset((result: { dataset: Object, info: Object }) => void, options?: Object)
 Returns dataset information and the items. Options can be optionally passed to limit the number of items returned,
 using `unwind` parameter, or any other option that is available here: [Dataset getItems](https://docs.apify.com/apify-client-js#ApifyClient-datasets-getItems)
 
@@ -297,10 +306,10 @@ The info object contains:
 N.B.: this method waits at least 12 seconds to be able to read from the remote storage and make sure
 it's ready to be accessed after the task/actor has finished running using `run`
 
-#### `withOutput((output: { body: any, contentType: string }) => void)`
+#### withOutput((output: { body: any, contentType: string }) => void)
 Returns the `OUTPUT` key of the run. Can have any content type, check the contentType
 
-#### `withStatistics((stats: Object) => void, options?: { index: number = 0 })`
+#### withStatistics((stats: Object) => void, options?: { index: number = 0 })
 Returns the `SDK_CRAWLER_STATISTICS_0` key of the run by default, unless provided with another index
 in the options.
 
@@ -333,11 +342,11 @@ Returns an object like this:
 }
 ```
 
-#### `withKeyValueStore((output: { body: any, contentType: string }) => void, options: { keyName: string })`,
+#### withKeyValueStore((output: { body: any, contentType: string }) => void, options: { keyName: string })
 Returns the content of the selected keyName. The test fails if the key doesn't exist.
 You can access the INPUT that was used for the run using `{ keyName: 'INPUT' }`
 
-#### `withRequestQueue((requestQueue: Object) => void)`,
+#### withRequestQueue((requestQueue: Object) => void)
 Access the requestQueue object, that contains:
 
 ```js
@@ -485,11 +494,6 @@ Running for an hour should consume around 0.125 CUs.
 
 Automated and integration tests are a must have for any complex piece of software. For Apify actors, it's no different.
 Apify actors can be one (or many inputs) to one output, or it can have many items (through the dataset).
-
-## Upcoming
-
-Planned for 1.0: Apify SDK 0.22+ offers a brand new client that allows a lot of flexibility, the matchers will eventually be upgraded
-to use it, since they are the new normal onward
 
 ## License
 

@@ -1,5 +1,7 @@
 const ApifyNM = require('apify'); // eslint-disable-line
+const ApifyClient = require('apify-client'); // eslint-disable-line
 const { XXHash64 } = require('xxhash-addon');
+const common = require('./common');
 
 const quickHash = () => {
     const hasher = new XXHash64();
@@ -7,44 +9,16 @@ const quickHash = () => {
 };
 
 /**
- * @typedef {{
- *   runId: string,
- *   hashCode: string,
- *   data: Pick<ApifyNM.ActorRun,
- *      | 'actId'
- *      | 'defaultDatasetId'
- *      | 'defaultKeyValueStoreId'
- *      | 'defaultRequestQueueId'
- *      | 'id'
- *      | 'buildNumber'
- *   >,
- * }} Result
- */
-
-/**
- * @typedef {(params: RunParams) => Promise<Result>} Runner
- */
-
-/**
- * @typedef {{
- *  taskId?: string,
- *  actorId?: string,
- *  input?: any,
- *  options?: Parameters<ApifyNM.callTask>[2]
- *  nonce?: string
- * }} RunParams
- */
-
-/**
  * @param {ApifyNM} Apify
- * @param {string} token
- * @return {Promise<Runner>}
+ * @param {ApifyClient} client
+ * @param {boolean} verboseLogs
+ * @return {Promise<common.Runner>}
  */
-const setupRun = async (Apify, token = Apify.getEnv().token) => {
+const setupRun = async (Apify, client, verboseLogs = false) => {
     const hasher = quickHash();
 
     const kv = await Apify.openKeyValueStore();
-    /** @type {Map<string, Result>} */
+    /** @type {Map<string, common.Result>} */
     const runMap = new Map(await kv.getValue('CALLS'));
 
     const persistState = async () => {
@@ -69,14 +43,10 @@ const setupRun = async (Apify, token = Apify.getEnv().token) => {
         if (!runMap.has(id)) {
             // looks duplicated code, but we need to run it once,
             // as it shouldn't run when there's a migration
-            const runResult = await Apify[taskId ? 'callTask' : 'call'](
-                taskId || actorId,
-                input,
-                {
-                    ...options,
-                    waitSecs: 0,
-                },
-            );
+            const runResult = await client[taskId ? 'task' : 'actor'](taskId || actorId).call(input, {
+                ...options,
+                waitSecs: 0,
+            });
 
             const {
                 buildId,
@@ -103,18 +73,33 @@ const setupRun = async (Apify, token = Apify.getEnv().token) => {
             });
         }
 
+        /** @type {common.Result} */
         const runResult = runMap.get(id);
-        const { runId, data: { actId } } = runResult;
+        const { runId } = runResult;
+        const url = `https://my.apify.com/view/runs/${runId}`;
 
-        await Apify.utils.waitForRunToFinish({
-            actorId: actId,
-            runId,
-            token,
-        });
+        if (verboseLogs) {
+            Apify.utils.log.info(
+                `Waiting ${taskId ? `task ${taskId}` : `actor ${actorId}`} to finish: ${url}`,
+                { ...run },
+            );
+        }
+
+        await client.run(runId).waitForFinish();
+
+        if (verboseLogs) {
+            Apify.utils.log.info(
+                `Run ${taskId ? `task ${taskId}` : `actor ${actorId}`} finished: ${url}`,
+                { ...run },
+            );
+        }
 
         await persistState();
 
-        return runResult;
+        return {
+            ...runResult,
+            format: common.formatRunMessage(runResult),
+        };
     };
 };
 

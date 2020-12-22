@@ -1,49 +1,58 @@
 const Apify = require('apify');
+const ApifyClient = require('apify-client'); // eslint-disable-line no-unused-vars
 const Jasmine = require('jasmine'); // eslint-disable-line no-unused-vars
-const runTypes = require('./run'); // eslint-disable-line no-unused-vars
-
-/** @param {runTypes.Result} run */
-const isRunResult = (run) => run
-    && typeof run.hashCode === 'string'
-    && !!run.hashCode
-    && !!run.data;
+const common = require('./common'); // eslint-disable-line no-unused-vars
 
 /**
  * Make the comparision composable without boilerplate
  *
  * @param {(param: {
- *  result: runTypes.Result,
+ *  result: common.Result,
  *  value: any,
- *  utils: { equals: (a: value, b: value) => boolean },
- *  token: string,
+ *  utils: { equals: (a: any, b: any) => boolean },
+ *  client: ApifyClient,
  *  args: any[],
- *  runFn: runTypes.Runner
- * }) => Promise<{ pass: boolean, message: string }>} compare
+ *  runFn: common.Runner,
+ *  format: (message: string) => string
+ * }) => Promise<{ pass: boolean, message?: string }>} compare
  */
-const generateCompare = (compare) => (/** @type {string} */token, /** @type {runTypes.Runner} */runFn) => (utils) => ({
+const generateCompare = (compare) => (/** @type {ApifyClient} */client, /** @type {common.Runner} */runFn) => (utils) => ({
     /**
-     * @param {runTypes.Result} result
+     * @param {common.Result} result
+     * @param {any} value
+     * @param {any[]} args
      */
     async compare(result, value, ...args) {
-        if (!isRunResult(result)) {
+        if (!common.isRunResult(result)) {
             throw new Error('Invalid usage of expectAsync on non-run result. Did you forget to run()?');
         }
 
-        return compare({ result, value, args, utils, token, runFn });
+        return compare({
+            result,
+            value,
+            args,
+            utils,
+            client,
+            runFn,
+            format: common.formatRunMessage(result),
+        });
     },
 });
 
 /**
  * toString() a function if given as a parameter, or return itself
+ * @param {string|Function} fn
  */
 const stringifyFn = (fn) => (typeof fn === 'function' ? fn.toString() : fn);
 
 /**
- * @param {(args: any) => Promise<void>} value
- * @param {any} args
- * @param {string} [message]
+ * @param {{
+ *   value: (args: any) => Promise<void>,
+ *   args: any,
+ *   format: (message: string) => string,
+ * }} params
  */
-const callbackValue = async (value, args, message = '') => {
+const callbackValue = async ({ value, args, format }) => {
     try {
         await value(args);
 
@@ -53,7 +62,7 @@ const callbackValue = async (value, args, message = '') => {
     } catch (e) {
         return {
             pass: false,
-            message: message || e.message,
+            message: format(e.message),
         };
     }
 };
@@ -66,34 +75,32 @@ const callbackValue = async (value, args, message = '') => {
  */
 const safeOptions = (args) => args.shift() || {};
 
-const toHaveStatus = generateCompare(async ({ result, value, utils, token }) => {
-    const run = await Apify.client.acts.getRun({
-        actId: result.data.actId,
-        runId: result.data.id,
-        token,
-    });
+const toHaveStatus = generateCompare(async ({ result, value, utils, client, format }) => {
+    const run = await client.run(result.runId).get();
 
     return {
         pass: utils.equals(run.status, value),
-        message: `Expected run ${result.runId} status to be "${value}", got "${run.status}"`,
+        message: format(`Expected status to be "${value}", got "${run.status}"`),
     };
 });
 
 /**
  * Retrieve the run log
  */
-const withLog = generateCompare(async ({ result, value }) => {
-    const log = await Apify.client.logs.getLog({
-        logId: result.runId,
-    });
+const withLog = generateCompare(async ({ result, value, client, format }) => {
+    const log = await client.log(result.runId).get();
 
-    return callbackValue(value, log);
+    return callbackValue({
+        value,
+        args: log,
+        format,
+    });
 });
 
 /**
  * Executes lukaskrivka/results-checker with the provided taskId or with input
  */
-const withChecker = generateCompare(async ({ result, value, args, runFn, token }) => {
+const withChecker = generateCompare(async ({ result, value, args, runFn, client, format }) => {
     const taskArgs = safeOptions(args);
     const options = safeOptions(args);
     const isTask = !!taskArgs.taskId;
@@ -101,7 +108,7 @@ const withChecker = generateCompare(async ({ result, value, args, runFn, token }
     if (!isTask && !taskArgs.functionalChecker) {
         return {
             pass: false,
-            message: 'You must provide "functionalChecker" input to withChecker as a second parameter',
+            message: format('You must provide "functionalChecker" input to withChecker as a second parameter'),
         };
     }
 
@@ -112,45 +119,40 @@ const withChecker = generateCompare(async ({ result, value, args, runFn, token }
             ...taskArgs,
             functionalChecker: stringifyFn(taskArgs.functionalChecker),
         },
-        options: {
-            ...options,
-            token,
-        },
+        options,
     });
 
-    const { status } = await Apify.client.acts.getRun({
-        runId: runResult.runId,
-        actId: runResult.data.actId,
-        token,
-    });
+    const { status } = await client.run(runResult.runId).get();
 
     if (status !== 'SUCCEEDED') {
         return {
             pass: false,
-            message: `Checker run ${runResult.runId} failed. Check the log for more information`,
+            message: format(`Checker run ${runResult.runId} failed. Check the log for more information`),
         };
     }
 
-    const record = await Apify.client.keyValueStores.getRecord({
-        storeId: runResult.data.defaultKeyValueStoreId,
-        key: 'OUTPUT',
-        token,
+    const record = await client.keyValueStore(runResult.data.defaultKeyValueStoreId).getRecord('OUTPUT', {
+        disableRedirect: true,
     });
 
-    return callbackValue(value, { runResult, output: record.body || {} });
+    return callbackValue({
+        value,
+        args: { runResult, output: record.body || {} },
+        format,
+    });
 });
 
 /**
  * Run the duplications-checker actor and get it's result
  */
-const withDuplicates = generateCompare(async ({ result, value, args, runFn, token }) => {
+const withDuplicates = generateCompare(async ({ result, value, args, runFn, client, format }) => {
     const input = safeOptions(args);
     const options = safeOptions(args);
 
     if (!input.fields || !Array.isArray(input.fields)) {
         return {
             pass: false,
-            message: 'You need to provide a "fields" parameter as an array of strings on withDuplicates',
+            message: format('You need to provide a "fields" parameter as an array of strings on withDuplicates'),
         };
     }
 
@@ -162,123 +164,124 @@ const withDuplicates = generateCompare(async ({ result, value, args, runFn, toke
             ...input,
             preCheckFunction: stringifyFn(input.preCheckFunction),
         },
-        options: {
-            ...options,
-            token,
-        },
+        options,
     });
 
-    const { status } = await Apify.client.acts.getRun({
-        runId: runResult.runId,
-        actId: runResult.data.actId,
-        token,
-    });
+    const { status } = await client.run(runResult.runId).get();
 
     if (status !== 'SUCCEEDED') {
         return {
             pass: false,
-            message: `Duplicates run ${runResult.runId} failed. Check the log for more information`,
+            message: format(`Duplicates run ${runResult.runId} failed. Check the actor log for more information.`),
         };
     }
 
-    const record = await Apify.client.keyValueStores.getRecord({
-        storeId: runResult.data.defaultKeyValueStoreId,
-        key: 'OUTPUT',
-        token,
+    const record = await client.keyValueStore(runResult.data.defaultKeyValueStoreId).getRecord('OUTPUT', {
+        disableRedirect: true,
     });
 
-    return callbackValue(value, { runResult, output: record.body || {} });
+    return callbackValue({
+        value,
+        args: { runResult, output: record.body || {} },
+        format,
+    });
 });
 
 /**
  * Access the KV OUTPUT directly
  */
-const withOutput = generateCompare(async ({ result, value, token }) => {
-    const record = await Apify.client.keyValueStores.getRecord({
-        storeId: result.data.defaultKeyValueStoreId,
-        key: 'OUTPUT',
-        token,
+const withOutput = generateCompare(async ({ result, value, client, format }) => {
+    const record = await client.keyValueStore(result.data.defaultKeyValueStoreId).getRecord('OUTPUT', {
+        disableRedirect: true,
     });
 
     if (!record) {
         return {
             pass: false,
-            message: `Run "${result.runId}" has no OUTPUT`,
+            message: format('No OUTPUT'),
         };
     }
 
-    return callbackValue(value, record);
+    return callbackValue({
+        value,
+        args: record,
+        format,
+    });
 });
 
 /**
  * Access the KV Statistics, at index 0
  */
-const withStatistics = generateCompare(async ({ result, value, token, args }) => {
+const withStatistics = generateCompare(async ({ result, value, client, format, args }) => {
     const options = safeOptions(args);
     const index = options.index || 0;
 
-    const record = await Apify.client.keyValueStores.getRecord({
-        storeId: result.data.defaultKeyValueStoreId,
-        key: `SDK_CRAWLER_STATISTICS_${index}`,
-        token,
+    const record = await client.keyValueStore(result.data.defaultKeyValueStoreId).getRecord(`SDK_CRAWLER_STATISTICS_${index}`, {
+        disableRedirect: true,
     });
 
     if (!record) {
         return {
             pass: false,
-            message: `Run "${result.runId}" has no SDK_CRAWLER_STATISTICS_${index}`,
+            message: format(`No SDK_CRAWLER_STATISTICS_${index}`),
         };
     }
 
-    return callbackValue(value, record.body || {});
+    return callbackValue({
+        value,
+        args: record.body || {},
+        format,
+    });
 });
 
 /**
  * Access any key from the KV store
  */
-const withKeyValueStore = generateCompare(async ({ result, value, token, args }) => {
+const withKeyValueStore = generateCompare(async ({ result, value, client, format, args }) => {
     const options = safeOptions(args);
 
     if (!options.keyName || typeof options.keyName !== 'string') {
         return {
             pass: false,
-            message: 'You need to specify the "keyName" parameter as { keyName: "KEY_NAME" }',
+            message: format('You need to specify the "keyName" parameter as { keyName: "KEY_NAME" }'),
         };
     }
 
-    const record = await Apify.client.keyValueStores.getRecord({
-        storeId: result.data.defaultKeyValueStoreId,
-        key: options.keyName,
+    const record = await client.keyValueStore(result.data.defaultKeyValueStoreId).getRecord(options.keyName, {
         disableRedirect: true,
-        token,
     });
 
     if (!record) {
         return {
             pass: false,
-            message: `Key "${options.keyName}" doesn't exists on run "${result.runId}"`,
+            message: format(`Key "${options.keyName}" doesn't exists`),
         };
     }
 
-    return callbackValue(value, record);
+    return callbackValue({
+        value,
+        args: record,
+        format,
+    });
 });
 
 /**
  * Access the result default requestQueue
  */
-const withRequestQueue = generateCompare(async ({ result, value, token }) => {
-    const requestQueue = await Apify.client.requestQueues.getQueue({
-        queueId: result.data.defaultRequestQueueId,
-        token,
-    });
+const withRequestQueue = generateCompare(async ({ result, value, client, format }) => {
+    const requestQueue = await client.requestQueue(result.data.defaultRequestQueueId).get();
 
-    return callbackValue(value, requestQueue);
+    return callbackValue({
+        value,
+        args: requestQueue,
+        format,
+    });
 });
 
 /**
  * Access the result default dataset
  */
-const withDataset = generateCompare(async ({ result, value, args, token }) => {
+const withDataset = generateCompare(async ({ result, value, args, client, format }) => {
     const options = safeOptions(args);
 
     // sometimes dataset information is wrong because there wasn't enough time
@@ -287,36 +290,33 @@ const withDataset = generateCompare(async ({ result, value, args, token }) => {
     await Apify.utils.sleep(12000);
 
     const [info, dataset] = await Promise.all([
-        Apify.client.datasets.getDataset({
-            datasetId: result.data.defaultDatasetId,
-            token,
-        }),
-        Apify.client.datasets.getItems({
-            ...options,
-            datasetId: result.data.defaultDatasetId,
-            token,
-        }),
+        client.dataset(result.data.defaultDatasetId).get(),
+        client.dataset(result.data.defaultDatasetId).listItems({ ...options }),
     ]);
 
-    return callbackValue(value, { dataset, info });
+    return callbackValue({
+        value,
+        args: { dataset, info },
+        format,
+    });
 });
 
 /**
  * @param {Jasmine} jasmine
- * @param {string} token
- * @param {runTypes.Runner} runFn
+ * @param {ApifyClient} client
+ * @param {common.Runner} runFn
  */
-const setupJasmine = (jasmine, token, runFn) => {
+const setupJasmine = (jasmine, client, runFn) => {
     jasmine.env.addAsyncMatchers({
-        toHaveStatus: toHaveStatus(token, runFn),
-        withLog: withLog(token, runFn),
-        withDuplicates: withDuplicates(token, runFn),
-        withChecker: withChecker(token, runFn),
-        withDataset: withDataset(token, runFn),
-        withOutput: withOutput(token, runFn),
-        withKeyValueStore: withKeyValueStore(token, runFn),
-        withRequestQueue: withRequestQueue(token, runFn),
-        withStatistics: withStatistics(token, runFn),
+        toHaveStatus: toHaveStatus(client, runFn),
+        withLog: withLog(client, runFn),
+        withDuplicates: withDuplicates(client, runFn),
+        withChecker: withChecker(client, runFn),
+        withDataset: withDataset(client, runFn),
+        withOutput: withOutput(client, runFn),
+        withKeyValueStore: withKeyValueStore(client, runFn),
+        withRequestQueue: withRequestQueue(client, runFn),
+        withStatistics: withStatistics(client, runFn),
     });
 };
 
