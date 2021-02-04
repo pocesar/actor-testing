@@ -1,6 +1,6 @@
 {
 	"name": "actor-testing",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"description": "This is a boilerplate of an Apify actor.",
 	"dependencies": {
 		"@types/jasmine": "^3.6.2",
