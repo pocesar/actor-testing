@@ -7,5 +7,8 @@
         "afterAll": "readonly",
         "jasmine": "readonly",
         "jQuery": "readonly"
+    },
+    "rules": {
+        "max-len": 0
     }
 }

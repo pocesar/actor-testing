@@ -10,7 +10,8 @@ const Apify = require('apify'); // eslint-disable-line no-unused-vars
     *      | 'defaultRequestQueueId'
     *      | 'id'
     *      | 'buildNumber'
-    *   >,
+    *      | 'stats'
+    *   > & { actorName: string, taskName?: string, name?: string },
     * }} Result
     */
 
@@ -23,6 +24,7 @@ const Apify = require('apify'); // eslint-disable-line no-unused-vars
  *  taskId?: string,
  *  actorId?: string,
  *  input?: any,
+ *  name?: string,
  *  options?: Parameters<Apify.callTask>[2]
  *  nonce?: string
  * }} RunParams
@@ -38,7 +40,14 @@ const isRunResult = (run) => run
  * @param {Result} runResult
  * @returns {(message: string) => string}
  */
-const formatRunMessage = (runResult) => (message) => `${message}\nhttps://my.apify.com/actors/${runResult.data.actId}#/runs/${runResult.runId} :`;
+const formatRunMessage = (runResult) => (message) => {
+    const formatted = `${
+        runResult.data.name ? `${runResult.data.name}\n` : ''
+    }${
+        runResult.data.taskName ? `${runResult.data.taskName} - ${runResult.data.actorName}` : runResult.data.actorName
+    }:${runResult.data.buildNumber}\nhttps://my.apify.com/actors/${runResult.data.actId}#/runs/${runResult.runId} : ${message}`;
+    return formatted;
+};
 
 /**
  * @param {string} body

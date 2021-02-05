@@ -49,7 +49,8 @@ The testing interface is familiar with Jasmine BDD tests, but with Apify specifi
             },
             options: {
                 timeout: 15000 // optional call options
-            }
+            },
+            name: 'should have preconfigured task working'
         });
 
         // sync assertions, not very useful, expections should have inside async assertions
@@ -127,6 +128,7 @@ const result = await run({
   input: {}       // custom input override
   options: {}     // specific memory, timeout options
   nonce: '1'      // additional nonce for tasks running with the same input and options
+  name: 'run name'// give the run a name to be able to distinguish between them
 });
 ```
 
@@ -212,6 +214,7 @@ Returns the `OUTPUT` of the run, containing an object like this:
 ```
 
 #### withChecker((result: { runResult: Object, output: Object }) => void, input: Object, options?: Object)
+
 Input is required and you need at least a `taskId` parameter pointing to a
 pre-configured results-checker task or you can pass everything to the input.
 Check the docs [here](https://apify.com/lukaskrivka/results-checker/input-schema)
@@ -261,6 +264,7 @@ Returns the `OUTPUT` of the run, containing an object like this:
 ```
 
 #### withDataset((result: { dataset: Object, info: Object }) => void, options?: Object)
+
 Returns dataset information and the items. Options can be optionally passed to limit the number of items returned,
 using `unwind` parameter, or any other option that is available here: [Dataset getItems](https://docs.apify.com/apify-client-js#ApifyClient-datasets-getItems)
 
@@ -307,9 +311,11 @@ N.B.: this method waits at least 12 seconds to be able to read from the remote s
 it's ready to be accessed after the task/actor has finished running using `run`
 
 #### withOutput((output: { value: any, contentType: string }) => void)
+
 Returns the `OUTPUT` key of the run. Can have any content type, check the contentType
 
 #### withStatistics((stats: Object) => void, options?: { index: number = 0 })
+
 Returns the `SDK_CRAWLER_STATISTICS_0` key of the run by default, unless provided with another index
 in the options.
 
@@ -343,10 +349,12 @@ Returns an object like this:
 ```
 
 #### withKeyValueStore((output: { value: any, contentType: string }) => void, options: { keyName: string })
+
 Returns the content of the selected keyName. The test fails if the key doesn't exist.
 You can access the INPUT that was used for the run using `{ keyName: 'INPUT' }`
 
 #### withRequestQueue((requestQueue: Object) => void)
+
 Access the requestQueue object, that contains:
 
 ```js

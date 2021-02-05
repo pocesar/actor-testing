@@ -38,12 +38,13 @@ const setupRun = async (Apify, client, verboseLogs = false) => {
             throw new Error('You need to provide just taskId or actorId, but not both');
         }
 
+        const isTask = !!taskId;
         const id = hasher(JSON.stringify(run));
 
         if (!runMap.has(id)) {
             // looks duplicated code, but we need to run it once,
             // as it shouldn't run when there's a migration
-            const runResult = await client[taskId ? 'task' : 'actor'](taskId || actorId).call(input, {
+            const runResult = await client[isTask ? 'task' : 'actor'](taskId || actorId).call(input, {
                 ...options,
                 waitSecs: 0,
             });
@@ -60,14 +61,19 @@ const setupRun = async (Apify, client, verboseLogs = false) => {
                 finishedAt,
                 userId,
                 runtime,
-                stats,
                 ...data
             } = runResult;
+
+            const { name: actorName } = await client.actor(data.actId).get();
+            const { name: taskName } = isTask && taskId ? await client.task(taskId).get() : {};
 
             runMap.set(id, {
                 hashCode: id,
                 data: {
                     ...data,
+                    actorName,
+                    taskName,
+                    name: run.name,
                 },
                 runId: runResult.id,
             });
@@ -80,7 +86,7 @@ const setupRun = async (Apify, client, verboseLogs = false) => {
 
         if (verboseLogs) {
             Apify.utils.log.info(
-                `Waiting ${taskId ? `task ${taskId}` : `actor ${actorId}`} to finish: ${url}`,
+                `Waiting ${isTask ? `task ${taskId}` : `actor ${actorId}`} to finish: ${url}`,
                 { ...run },
             );
         }
@@ -89,7 +95,7 @@ const setupRun = async (Apify, client, verboseLogs = false) => {
 
         if (verboseLogs) {
             Apify.utils.log.info(
-                `Run ${taskId ? `task ${taskId}` : `actor ${actorId}`} finished: ${url}`,
+                `Run ${isTask ? `task ${taskId}` : `actor ${actorId}`} finished: ${url}`,
                 { ...run },
             );
         }
