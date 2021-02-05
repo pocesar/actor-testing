@@ -1,11 +1,11 @@
 {
 	"name": "actor-testing",
-	"version": "1.0.1",
+	"version": "1.1.0",
 	"description": "This is a boilerplate of an Apify actor.",
 	"dependencies": {
 		"@types/jasmine": "^3.6.2",
 		"apify": "^0.22.4",
-        "apify-client": "^1.0.3",
+		"apify-client": "^1.0.3",
 		"moment": "^2.29.1",
 		"lodash": "^4.17.20",
 		"jasmine": "^3.6.3",
