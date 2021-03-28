@@ -91,6 +91,8 @@ const setupRun = async (Apify, client, verboseLogs = false) => {
             );
         }
 
+        await persistState();
+
         await client.run(runId).waitForFinish();
 
         if (verboseLogs) {
