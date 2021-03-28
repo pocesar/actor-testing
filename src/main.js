@@ -58,6 +58,10 @@ Apify.main(async () => {
         }
     }
 
+    if (!input.testSpec) {
+        throw new Error('Missing required input "testSpec" parameter');
+    }
+
     let testName = 'Actor tests';
 
     if (!input.testName) {

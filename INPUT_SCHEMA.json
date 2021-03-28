@@ -72,5 +72,5 @@
             "editor": "textfield"
         }
     },
-    "required": ["testSpec"]
+    "required": []
 }
