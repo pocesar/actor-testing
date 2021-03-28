@@ -70,23 +70,21 @@ The testing interface is familiar with Jasmine BDD tests, but with Apify specifi
             expect(value).toEqual({ hello: 'world' }, myTaskResult.format('Output body'));
         });
 
-        // reads any key
+        // reads any key, fails the test if not found
         await expectAsync(myTaskResult).withKeyValueStore(async ({ key, contentType, value }) => {
             expect(value).toEqual({ status: true });
-        }, { key: 'INPUT' });
+        }, { keyName: 'INPUT' });
 
         // gets requestQueue information
-        await expectAsync(myTaskResult).withRequestQueue(
-            async ({
-                // contains everything from RequestQueueInfo
-                id, userId, createdAt,
-                modifiedAt, accessedAt, expireAt,
-                totalRequestCount, handledRequestCount, pendingRequestCount,
-                actId, actRunId, hadMultipleClients
-            }) => {
-                expect(totalRequestCount).toBeGreaterThan(1);
-            }
-        );
+        await expectAsync(myTaskResult).withRequestQueue(async ({
+            // contains everything from RequestQueueInfo
+            id, userId, createdAt,
+            modifiedAt, accessedAt, expireAt,
+            totalRequestCount, handledRequestCount, pendingRequestCount,
+            actId, actRunId, hadMultipleClients
+        }) => {
+            expect(totalRequestCount).toBeGreaterThan(1);
+        });
 
         // check log for errors
         await expectAsync(myTaskResult).withLog((log) => {
