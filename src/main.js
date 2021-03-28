@@ -15,7 +15,7 @@ Apify.main(async () => {
     /** @type {any} */
     const input = await Apify.getInput();
     const {
-        defaultTimeout = 300000,
+        defaultTimeout = 600000,
         filter,
         verboseLogs = true,
         isAbortSignal = false,
@@ -30,7 +30,7 @@ Apify.main(async () => {
 
     const defaultFilename = 'test.js';
 
-    if (Apify.isAtHome() && abortRuns) {
+    if (Apify.isAtHome()) {
         // we need to stop pending runs from the remote aborted/timed-out run
         if (isAbortSignal) {
             const remoteKv = await Apify.openKeyValueStore(input.kv);
@@ -42,17 +42,20 @@ Apify.main(async () => {
             return;
         }
 
-        // dynamicly webhook ourselves so we can catch the CALLS from outside and abort them
-        await Apify.addWebhook({
-            eventTypes: ['ACTOR.RUN.ABORTED', 'ACTOR.RUN.TIMED_OUT'],
-            requestUrl: `https://api.apify.com/v2/acts/${Apify.getEnv().actorId}/runs?token=${token}`,
-            idempotencyKey: Apify.getEnv().actorRunId,
-            payloadTemplate: JSON.stringify({
-                isAbortSignal: true,
-                token,
-                kv: Apify.getEnv().defaultKeyValueStoreId,
-            }),
-        });
+        if (abortRuns) {
+            const { actorRunId, actorId, defaultKeyValueStoreId } = Apify.getEnv();
+            // dynamicly webhook ourselves so we can catch the CALLS from outside and abort them
+            await Apify.addWebhook({
+                eventTypes: ['ACTOR.RUN.ABORTED', 'ACTOR.RUN.TIMED_OUT'],
+                requestUrl: `https://api.apify.com/v2/acts/${actorId}/runs?token=${token}`,
+                idempotencyKey: actorRunId,
+                payloadTemplate: JSON.stringify({
+                    isAbortSignal: true,
+                    token,
+                    kv: defaultKeyValueStoreId,
+                }),
+            });
+        }
     }
 
     let testName = 'Actor tests';
