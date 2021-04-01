@@ -11,6 +11,8 @@ const setupRun = require('./run');
 const JSONReporter = require('./collector');
 const { collectFailed } = require('./common');
 
+const { log } = Apify.utils;
+
 Apify.main(async () => {
     /** @type {any} */
     const input = await Apify.getInput();
@@ -36,7 +38,7 @@ Apify.main(async () => {
             const remoteKv = await Apify.openKeyValueStore(input.kv);
             const calls = new Map(await remoteKv.getValue('CALLS'));
             for (const { runId } of calls.values()) {
-                Apify.utils.log.info(`Aborting run ${runId}`);
+                log.info(`Aborting run ${runId}`);
                 await client.run(runId).abort();
             }
             return;
@@ -126,29 +128,42 @@ Apify.main(async () => {
                 const { actorRunId, defaultKeyValueStoreId } = Apify.getEnv();
 
                 if (input.slackToken && input.slackChannel) {
-                    Apify.utils.log.info(`Posting to channel ${input.slackChannel}`);
+                    log.info(`Posting to channel ${input.slackChannel}`);
 
-                    await Apify.call('katerinahronik/slack-message', {
-                        token: input.slackToken,
-                        channel: input.slackChannel,
-                        text: `<https://my.apify.com/view/runs/${actorRunId}|${testName}> has ${
-                            failed.length
-                        } failing tests. Check the <https://api.apify.com/v2/key-value-stores/${
-                            defaultKeyValueStoreId
-                        }/records/OUTPUT?disableRedirect=true|OUTPUT> for full details.\n${failed.map((s) => s.markdown).join('\n')}`,
-                    });
+                    try {
+                        await Apify.call('katerinahronik/slack-message', {
+                            token: input.slackToken,
+                            channel: input.slackChannel,
+                            text: `<https://my.apify.com/view/runs/${actorRunId}|${testName}> has ${
+                                failed.length
+                            } failing tests. Check the <https://api.apify.com/v2/key-value-stores/${
+                                defaultKeyValueStoreId
+                            }/records/OUTPUT?disableRedirect=true|OUTPUT> for full details.\n${failed.map((s) => s.markdown).join('\n')}`,
+                        }, {
+                            fetchOutput: false,
+                        });
+                    } catch (e) {
+                        log.exception(e, 'Slack message');
+                    }
                 }
 
                 if (input.email?.trim().includes('@')) {
-                    Apify.utils.log.info(`Sending email to ${input.email}`);
+                    log.info(`Sending email to ${input.email}`);
 
-                    await Apify.call('apify/send-mail', {
-                        to: input.email.trim(),
-                        subject: `${testName} has failing tests`,
-                        html: `Check the <a href="https://api.apify.com/v2/key-value-stores/${
-                            defaultKeyValueStoreId
-                        }/records/OUTPUT?disableRedirect=true">OUTPUT</a> for full details.<br>\n${failed.map((s) => s.html).join('\n<br>\n')}`,
-                    });
+                    try {
+                        await Apify.call('apify/send-mail', {
+                            to: input.email.trim(),
+                            subject: `${testName} has failing tests`,
+                            text: '',
+                            html: `Check the <a href="https://api.apify.com/v2/key-value-stores/${
+                                defaultKeyValueStoreId
+                            }/records/OUTPUT?disableRedirect=true">OUTPUT</a> for full details.<br>\n${failed.map((s) => s.html).join('\n<br>\n')}`,
+                        }, {
+                            fetchOutput: false,
+                        });
+                    } catch (e) {
+                        log.exception(e, 'Send email');
+                    }
                 }
             }
         },
