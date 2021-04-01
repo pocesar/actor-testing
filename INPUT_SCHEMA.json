@@ -52,6 +52,13 @@
             "default": [],
             "editor": "stringList"
         },
+        "email": {
+            "title": "Email notification",
+            "description": "Receive failing tests on the provided email",
+            "type": "string",
+            "default": "",
+            "editor": "textfield"
+        },
         "slackToken": {
             "title": "Slack token",
             "description": "Slack token",

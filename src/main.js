@@ -122,18 +122,34 @@ Apify.main(async () => {
 
             await Apify.setValue('OUTPUT', testResult);
 
-            if (failed.length && input.slackToken && input.slackChannel) {
-                Apify.utils.log.info(`Posting to channel ${input.slackChannel}`);
+            if (failed.length) {
+                const { actorRunId, defaultKeyValueStoreId } = Apify.getEnv();
 
-                await Apify.call('katerinahronik/slack-message', {
-                    token: input.slackToken,
-                    channel: input.slackChannel,
-                    text: `<https://my.apify.com/view/runs/${Apify.getEnv().actorRunId}|${testName}> has ${
-                        failed.length
-                    } failing tests. Check the <https://api.apify.com/v2/key-value-stores/${
-                        Apify.getEnv().defaultKeyValueStoreId
-                    }/records/OUTPUT?disableRedirect=true|OUTPUT> for full details.\n${failed.join('\n')}`,
-                });
+                if (input.slackToken && input.slackChannel) {
+                    Apify.utils.log.info(`Posting to channel ${input.slackChannel}`);
+
+                    await Apify.call('katerinahronik/slack-message', {
+                        token: input.slackToken,
+                        channel: input.slackChannel,
+                        text: `<https://my.apify.com/view/runs/${actorRunId}|${testName}> has ${
+                            failed.length
+                        } failing tests. Check the <https://api.apify.com/v2/key-value-stores/${
+                            defaultKeyValueStoreId
+                        }/records/OUTPUT?disableRedirect=true|OUTPUT> for full details.\n${failed.map((s) => s.markdown).join('\n')}`,
+                    });
+                }
+
+                if (input.email?.trim().includes('@')) {
+                    Apify.utils.log.info(`Sending email to ${input.email}`);
+
+                    await Apify.call('apify/send-mail', {
+                        to: input.email.trim(),
+                        subject: `${testName} has failing tests`,
+                        html: `Check the <a href="https://api.apify.com/v2/key-value-stores/${
+                            defaultKeyValueStoreId
+                        }/records/OUTPUT?disableRedirect=true">OUTPUT</a> for full details.<br>\n${failed.map((s) => s.html).join('\n<br>\n')}`,
+                    });
+                }
             }
         },
         verboseLogs,

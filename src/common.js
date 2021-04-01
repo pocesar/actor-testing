@@ -51,14 +51,15 @@ const formatRunMessage = (runResult) => (message) => {
 
 /**
  * @param {string} body
+ * @param {(match: string) => string} match
  */
-const linkToMkdwn = (body) => {
+const linkToFormat = (body, match) => {
     return [...body.matchAll(/(https:\/\/[\S]+)/gm)].reduce((out, matches) => {
         if (!matches[1]) {
             return out;
         }
 
-        return `${out.slice(0, matches.index)}${out.slice(matches.index).replace(matches[1], `<${matches[1]}|${matches[1].split('/').pop()}>`)}`;
+        return `${out.slice(0, matches.index)}${out.slice(matches.index).replace(matches[1], match(matches[1]))}`;
     }, body);
 };
 
@@ -69,7 +70,12 @@ const collectFailed = (result) => {
             return [];
         }
 
-        return v.specs.flatMap((spec) => spec.failedExpectations.map((s) => `\`\`\`${linkToMkdwn(s.message)}\`\`\``));
+        return v.specs.flatMap((spec) => spec.failedExpectations.map((s) => {
+            return {
+                markdown: `\`\`\`${linkToFormat(s.message, (link) => `<${link}|${link.split('/').pop()}>`)}\`\`\``,
+                html: linkToFormat(s.message, (link) => `<a href=${link}>${link.split('/').pop()}</a>`),
+            };
+        }));
     });
 };
 
