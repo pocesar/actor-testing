@@ -131,9 +131,7 @@ const withChecker = generateCompare(async ({ result, value, args, runFn, client,
         };
     }
 
-    const record = await client.keyValueStore(runResult.data.defaultKeyValueStoreId).getRecord('OUTPUT', {
-        disableRedirect: true,
-    });
+    const record = await client.keyValueStore(runResult.data.defaultKeyValueStoreId).getRecord('OUTPUT');
 
     return callbackValue({
         value,
@@ -176,9 +174,7 @@ const withDuplicates = generateCompare(async ({ result, value, args, runFn, clie
         };
     }
 
-    const record = await client.keyValueStore(runResult.data.defaultKeyValueStoreId).getRecord('OUTPUT', {
-        disableRedirect: true,
-    });
+    const record = await client.keyValueStore(runResult.data.defaultKeyValueStoreId).getRecord('OUTPUT');
 
     return callbackValue({
         value,
@@ -191,9 +187,7 @@ const withDuplicates = generateCompare(async ({ result, value, args, runFn, clie
  * Access the KV OUTPUT directly
  */
 const withOutput = generateCompare(async ({ result, value, client, format }) => {
-    const record = await client.keyValueStore(result.data.defaultKeyValueStoreId).getRecord('OUTPUT', {
-        disableRedirect: true,
-    });
+    const record = await client.keyValueStore(result.data.defaultKeyValueStoreId).getRecord('OUTPUT');
 
     if (!record) {
         return {
@@ -216,9 +210,7 @@ const withStatistics = generateCompare(async ({ result, value, client, format, a
     const options = safeOptions(args);
     const index = options.index || 0;
 
-    const record = await client.keyValueStore(result.data.defaultKeyValueStoreId).getRecord(`SDK_CRAWLER_STATISTICS_${index}`, {
-        disableRedirect: true,
-    });
+    const record = await client.keyValueStore(result.data.defaultKeyValueStoreId).getRecord(`SDK_CRAWLER_STATISTICS_${index}`);
 
     if (!record) {
         return {
@@ -247,9 +239,7 @@ const withKeyValueStore = generateCompare(async ({ result, value, client, format
         };
     }
 
-    const record = await client.keyValueStore(result.data.defaultKeyValueStoreId).getRecord(options.keyName, {
-        disableRedirect: true,
-    });
+    const record = await client.keyValueStore(result.data.defaultKeyValueStoreId).getRecord(options.keyName);
 
     if (!record) {
         return {
