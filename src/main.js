@@ -120,7 +120,7 @@ Apify.main(async () => {
 
     const jsonReporter = new JSONReporter(
         async (testResult) => {
-            const failed = collectFailed(testResult);
+            const { failed, total, totalSpecs, failedSpecs } = collectFailed(testResult);
 
             await Apify.setValue('OUTPUT', testResult);
 
@@ -136,9 +136,9 @@ Apify.main(async () => {
                             channel: input.slackChannel,
                             text: `<https://my.apify.com/view/runs/${actorRunId}|${testName}> has ${
                                 failed.length
-                            } failing tests. Check the <https://api.apify.com/v2/key-value-stores/${
+                            }/${total} failing expectations. ${failedSpecs}/${totalSpecs}. Check the <https://api.apify.com/v2/key-value-stores/${
                                 defaultKeyValueStoreId
-                            }/records/OUTPUT?disableRedirect=true|OUTPUT> for full details.\n${failed.map((s) => s.markdown).join('\n')}`,
+                            }/records/OUTPUT?disableRedirect=true|OUTPUT> for full details.\n${failed.map((s) => `${s.name}:\n${s.markdown}`).join('\n')}`,
                         }, {
                             fetchOutput: false,
                         });
@@ -153,11 +153,11 @@ Apify.main(async () => {
                     try {
                         await Apify.call('apify/send-mail', {
                             to: input.email.trim(),
-                            subject: `${testName} has failing tests`,
+                            subject: `${testName} has failing ${failedSpecs} tests`,
                             text: '',
                             html: `Check the <a href="https://api.apify.com/v2/key-value-stores/${
                                 defaultKeyValueStoreId
-                            }/records/OUTPUT?disableRedirect=true">OUTPUT</a> for full details.<br>\n${failed.map((s) => s.html).join('\n<br>\n')}`,
+                            }/records/OUTPUT?disableRedirect=true">OUTPUT</a> for full details.<br>\n${failed.map((s) => `${s.name}:<br>${s.html}`).join('\n<br>\n')}`,
                         }, {
                             fetchOutput: false,
                         });

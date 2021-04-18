@@ -65,18 +65,47 @@ const linkToFormat = (body, match) => {
 
 /** @param {any} result */
 const collectFailed = (result) => {
-    return Object.values(result).flatMap((v) => {
-        if (!v.specs || !v.specs.length || !v.specs.some((spec) => spec.failedExpectations.length)) {
+    let passed = 0;
+    let totalSpecs = 0;
+    let passingSpecs = 0;
+    let total = 0;
+    let failedSpecs = 0;
+
+    /**
+     * @type {Array<{ name: string, markdown: string, html: string }>}
+     */
+    const failed = Object.values(result).flatMap((v) => {
+        totalSpecs += v?.specs?.length ?? 0;
+        total += v?.specs?.reduce((out, spec) => (out + spec.failedExpectations.length + v.specs.passedExpectations), 0);
+
+        if (!v?.specs?.length || !v.specs.some((spec) => spec.failedExpectations.length)) {
+            passingSpecs++;
             return [];
         }
 
-        return v.specs.flatMap((spec) => spec.failedExpectations.map((s) => {
-            return {
-                markdown: `\`\`\`${linkToFormat(s.message, (link) => `<${link}|${link.split('/').pop()}>`)}\`\`\``,
-                html: linkToFormat(s.message, (link) => `<a href=${link}>${link.split('/').pop()}</a>`),
-            };
-        }));
+        return v.specs.flatMap((spec) => {
+            passed += v.specs.passedExpectations;
+
+            return spec.failedExpectations.map((s) => {
+                failedSpecs++;
+
+                return {
+                    name: spec.fullName,
+                    markdown: `\`\`\`${linkToFormat(s.message, (link) => `<${link}|${link.split('/').pop()}>`)}\`\`\``,
+                    html: linkToFormat(s.message, (link) => `<a href=${link}>${link.split('/').pop()}</a>`),
+                };
+            });
+        });
     });
+
+    return {
+        failed,
+        passed,
+        totalSpecs,
+        passingSpecs,
+        failedSpecs,
+        total,
+    };
 };
 
 module.exports = {
