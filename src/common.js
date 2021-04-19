@@ -85,7 +85,7 @@ const collectFailed = (result) => {
 
         return v.specs.flatMap((spec) => {
             passed += v.specs.passedExpectations;
-            failedSpecs += spec.failedExpectations.length ? 1 : 1;
+            failedSpecs += spec.failedExpectations.length ? 1 : 0;
 
             return spec.failedExpectations.map((s) => {
                 return {
