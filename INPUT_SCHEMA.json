@@ -20,7 +20,7 @@
         "defaultTimeout": {
             "title": "Default timeout",
             "description": "Changes the default timeout for each individual test, in milliseconds. Defaults to 5 minutes",
-            "default": 600000,
+            "default": 1200000,
             "type": "integer",
             "editor": "number"
         },

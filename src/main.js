@@ -9,7 +9,7 @@ const Loader = require('jasmine/lib/loader');
 const { setupJasmine } = require('./matchers');
 const setupRun = require('./run');
 const JSONReporter = require('./collector');
-const { collectFailed } = require('./common');
+const { collectFailed, nameBreak } = require('./common');
 
 const { log } = Apify.utils;
 
@@ -17,7 +17,7 @@ Apify.main(async () => {
     /** @type {any} */
     const input = await Apify.getInput();
     const {
-        defaultTimeout = 600000,
+        defaultTimeout = 1200000,
         filter,
         verboseLogs = true,
         isAbortSignal = false,
@@ -121,12 +121,29 @@ Apify.main(async () => {
     const jsonReporter = new JSONReporter(
         async (testResult) => {
             const { failed, total, totalSpecs, failedSpecs } = collectFailed(testResult);
+            const { actorRunId, defaultKeyValueStoreId } = Apify.getEnv();
 
             await Apify.setValue('OUTPUT', testResult);
+            const addName = nameBreak();
+
+            const slackMessage = `<https://my.apify.com/view/runs/${actorRunId}|${testName}> has ${
+                failed.length
+            }/${total} failing expectations. Failing test suites: ${failedSpecs}/${totalSpecs}. Check the <https://api.apify.com/v2/key-value-stores/${
+                defaultKeyValueStoreId
+            }/records/OUTPUT?disableRedirect=true|OUTPUT> for full details.\n${failed.map((s) => `${addName(s.name, ':\n')}${s.markdown}`).join('\n')}`;
+
+            const emailMessage = `Check the <a href="https://api.apify.com/v2/key-value-stores/${
+                defaultKeyValueStoreId
+            }/records/OUTPUT?disableRedirect=true">OUTPUT</a> for full details.<br>\n${failed.map((s) => `${addName(s.name, ':<br>')}${s.html}`).join('\n<br>\n')}`;
+
+            if (input.debugMessages) {
+                await Apify.pushData({
+                    slackMessage,
+                    emailMessage,
+                });
+            }
 
             if (failed.length) {
-                const { actorRunId, defaultKeyValueStoreId } = Apify.getEnv();
-
                 if (input.slackToken && input.slackChannel) {
                     log.info(`Posting to channel ${input.slackChannel}`);
 
@@ -134,11 +151,7 @@ Apify.main(async () => {
                         await Apify.call('katerinahronik/slack-message', {
                             token: input.slackToken,
                             channel: input.slackChannel,
-                            text: `<https://my.apify.com/view/runs/${actorRunId}|${testName}> has ${
-                                failed.length
-                            }/${total} failing expectations. ${failedSpecs}/${totalSpecs}. Check the <https://api.apify.com/v2/key-value-stores/${
-                                defaultKeyValueStoreId
-                            }/records/OUTPUT?disableRedirect=true|OUTPUT> for full details.\n${failed.map((s) => `${s.name}:\n${s.markdown}`).join('\n')}`,
+                            text: slackMessage,
                         }, {
                             fetchOutput: false,
                         });
@@ -155,9 +168,7 @@ Apify.main(async () => {
                             to: input.email.trim(),
                             subject: `${testName} has failing ${failedSpecs} tests`,
                             text: '',
-                            html: `Check the <a href="https://api.apify.com/v2/key-value-stores/${
-                                defaultKeyValueStoreId
-                            }/records/OUTPUT?disableRedirect=true">OUTPUT</a> for full details.<br>\n${failed.map((s) => `${s.name}:<br>${s.html}`).join('\n<br>\n')}`,
+                            html: emailMessage,
                         }, {
                             fetchOutput: false,
                         });

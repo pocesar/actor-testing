@@ -76,7 +76,7 @@ const collectFailed = (result) => {
      */
     const failed = Object.values(result).flatMap((v) => {
         totalSpecs += v?.specs?.length ?? 0;
-        total += v?.specs?.reduce((out, spec) => (out + spec.failedExpectations.length + v.specs.passedExpectations), 0);
+        total += v?.specs?.reduce((out, spec) => (out + spec.failedExpectations.length + spec.passedExpectations.length), 0) ?? 0;
 
         if (!v?.specs?.length || !v.specs.some((spec) => spec.failedExpectations.length)) {
             passingSpecs++;
@@ -85,12 +85,11 @@ const collectFailed = (result) => {
 
         return v.specs.flatMap((spec) => {
             passed += v.specs.passedExpectations;
+            failedSpecs += spec.failedExpectations.length ? 1 : 1;
 
             return spec.failedExpectations.map((s) => {
-                failedSpecs++;
-
                 return {
-                    name: spec.fullName,
+                    name: `${v.description} ${spec.description}`,
                     markdown: `\`\`\`${linkToFormat(s.message, (link) => `<${link}|${link.split('/').pop()}>`)}\`\`\``,
                     html: linkToFormat(s.message, (link) => `<a href=${link}>${link.split('/').pop()}</a>`),
                 };
@@ -108,8 +107,21 @@ const collectFailed = (result) => {
     };
 };
 
+const nameBreak = () => {
+    let last = '';
+    return (name, separator) => {
+        if (name !== last) {
+            last = name;
+            return `${name}${separator}`;
+        }
+
+        return '';
+    };
+};
+
 module.exports = {
     formatRunMessage,
     isRunResult,
+    nameBreak,
     collectFailed,
 };
