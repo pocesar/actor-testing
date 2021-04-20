@@ -48,7 +48,7 @@ Apify.main(async () => {
             const { actorRunId, actorId, defaultKeyValueStoreId } = Apify.getEnv();
             // dynamicly webhook ourselves so we can catch the CALLS from outside and abort them
             await Apify.addWebhook({
-                eventTypes: ['ACTOR.RUN.ABORTED', 'ACTOR.RUN.TIMED_OUT'],
+                eventTypes: ['ACTOR.RUN.ABORTED', 'ACTOR.RUN.TIMED_OUT', 'ACTOR.RUN.FAILED'],
                 requestUrl: `https://api.apify.com/v2/acts/${actorId}/runs?token=${token}`,
                 idempotencyKey: actorRunId,
                 payloadTemplate: JSON.stringify({
