@@ -73,7 +73,7 @@ Apify.main(async () => {
             return;
         }
 
-        const { actorRunId, actorId, defaultKeyValueStoreId } = Apify.getEnv();
+        const { actorRunId, actorId, actorTaskId, defaultKeyValueStoreId } = Apify.getEnv();
 
         if (abortRuns) {
             // dynamicly webhook ourselves so we can catch the CALLS from outside and abort them
@@ -92,15 +92,20 @@ Apify.main(async () => {
         // notify timeouts separately
         await Apify.addWebhook({
             eventTypes: ['ACTOR.RUN.TIMED_OUT'],
-            requestUrl: `https://api.apify.com/v2/acts/${actorId}/runs?token=${token}`,
+            requestUrl: actorTaskId
+                ? `https://api.apify.com/v2/actor-tasks/${actorTaskId}/runs?token=${token}`
+                : `https://api.apify.com/v2/acts/${actorId}/runs?token=${token}`,
             idempotencyKey: `TIMEOUT-${actorRunId}`,
             payloadTemplate: JSON.stringify({
-                slackToken: input.slackToken,
-                slackChannel: input.slackChannel,
-                email: input.email,
                 isTimeoutSignal: true,
                 actorRunId,
-                token,
+                ...(actorTaskId ? {} : {
+                    slackToken: input.slackToken,
+                    slackChannel: input.slackChannel,
+                    email: input.email,
+                    token,
+                    testName,
+                }),
             }),
         });
     }
