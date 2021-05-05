@@ -9,18 +9,22 @@ const Loader = require('jasmine/lib/loader');
 const { setupJasmine } = require('./matchers');
 const setupRun = require('./run');
 const JSONReporter = require('./collector');
-const { collectFailed, nameBreak } = require('./common');
+const { collectFailed, nameBreak, createNotifier } = require('./common');
 
 const { log } = Apify.utils;
 
 Apify.main(async () => {
     /** @type {any} */
     const input = await Apify.getInput();
+
+    const notify = createNotifier(input);
+
     const {
         defaultTimeout = 1200000,
         filter,
         verboseLogs = true,
         isAbortSignal = false,
+        isTimeoutSignal = false,
         abortRuns = true,
     } = input;
 
@@ -31,38 +35,6 @@ Apify.main(async () => {
     });
 
     const defaultFilename = 'test.js';
-
-    if (Apify.isAtHome()) {
-        // we need to stop pending runs from the remote aborted/timed-out run
-        if (isAbortSignal) {
-            const remoteKv = await Apify.openKeyValueStore(input.kv);
-            const calls = new Map(await remoteKv.getValue('CALLS'));
-            for (const { runId } of calls.values()) {
-                log.info(`Aborting run ${runId}`);
-                await client.run(runId).abort();
-            }
-            return;
-        }
-
-        if (abortRuns) {
-            const { actorRunId, actorId, defaultKeyValueStoreId } = Apify.getEnv();
-            // dynamicly webhook ourselves so we can catch the CALLS from outside and abort them
-            await Apify.addWebhook({
-                eventTypes: ['ACTOR.RUN.ABORTED', 'ACTOR.RUN.TIMED_OUT', 'ACTOR.RUN.FAILED'],
-                requestUrl: `https://api.apify.com/v2/acts/${actorId}/runs?token=${token}`,
-                idempotencyKey: actorRunId,
-                payloadTemplate: JSON.stringify({
-                    isAbortSignal: true,
-                    token,
-                    kv: defaultKeyValueStoreId,
-                }),
-            });
-        }
-    }
-
-    if (!input.testSpec) {
-        throw new Error('Missing required input "testSpec" parameter');
-    }
 
     let testName = 'Actor tests';
 
@@ -77,6 +49,64 @@ Apify.main(async () => {
         }
     } else {
         testName = input.testName;
+    }
+
+    if (Apify.isAtHome()) {
+        // we need to stop pending runs from the remote aborted/timed-out run
+        if (isAbortSignal) {
+            const remoteKv = await Apify.openKeyValueStore(input.kv);
+            const calls = new Map(await remoteKv.getValue('CALLS'));
+            for (const { runId } of calls.values()) {
+                log.info(`Aborting run ${runId}`);
+                await client.run(runId).abort();
+            }
+            return;
+        }
+
+        if (isTimeoutSignal) {
+            await notify({
+                slackMessage: `<https://my.apify.com/view/runs/${input.actorRunId}|${testName}> has timed out!`,
+                emailMessage: `Your test <a href="https://my.apify.com/view/runs/${input.actorRunId}">${testName}</a> timed out`,
+                subject: `${testName} has timed out!`,
+            });
+
+            return;
+        }
+
+        const { actorRunId, actorId, defaultKeyValueStoreId } = Apify.getEnv();
+
+        if (abortRuns) {
+            // dynamicly webhook ourselves so we can catch the CALLS from outside and abort them
+            await Apify.addWebhook({
+                eventTypes: ['ACTOR.RUN.ABORTED', 'ACTOR.RUN.TIMED_OUT', 'ACTOR.RUN.FAILED'],
+                requestUrl: `https://api.apify.com/v2/acts/${actorId}/runs?token=${token}`,
+                idempotencyKey: `ABORT-${actorRunId}`,
+                payloadTemplate: JSON.stringify({
+                    isAbortSignal: true,
+                    token,
+                    kv: defaultKeyValueStoreId,
+                }),
+            });
+        }
+
+        // notify timeouts separately
+        await Apify.addWebhook({
+            eventTypes: ['ACTOR.RUN.TIMED_OUT'],
+            requestUrl: `https://api.apify.com/v2/acts/${actorId}/runs?token=${token}`,
+            idempotencyKey: `TIMEOUT-${actorRunId}`,
+            payloadTemplate: JSON.stringify({
+                slackToken: input.slackToken,
+                slackChannel: input.slackChannel,
+                email: input.email,
+                isTimeoutSignal: true,
+                actorRunId,
+                token,
+            }),
+        });
+    }
+
+    if (!input.testSpec) {
+        throw new Error('Missing required input "testSpec" parameter');
     }
 
     // hacking jasmine internals to accept non-existing files
@@ -144,38 +174,11 @@ Apify.main(async () => {
             }
 
             if (failed.length) {
-                if (input.slackToken && input.slackChannel) {
-                    log.info(`Posting to channel ${input.slackChannel}`);
-
-                    try {
-                        await Apify.call('katerinahronik/slack-message', {
-                            token: input.slackToken,
-                            channel: input.slackChannel,
-                            text: slackMessage,
-                        }, {
-                            fetchOutput: false,
-                        });
-                    } catch (e) {
-                        log.exception(e, 'Slack message');
-                    }
-                }
-
-                if (input.email?.trim().includes('@')) {
-                    log.info(`Sending email to ${input.email}`);
-
-                    try {
-                        await Apify.call('apify/send-mail', {
-                            to: input.email.trim(),
-                            subject: `${testName} has failing ${failedSpecs} tests`,
-                            text: '',
-                            html: emailMessage,
-                        }, {
-                            fetchOutput: false,
-                        });
-                    } catch (e) {
-                        log.exception(e, 'Send email');
-                    }
-                }
+                await notify({
+                    emailMessage,
+                    slackMessage,
+                    subject: `${testName} has failing ${failedSpecs} tests`,
+                });
             }
         },
         verboseLogs,
