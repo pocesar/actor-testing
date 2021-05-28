@@ -3,7 +3,8 @@
 	"version": "0.0",
 	"buildTag": "latest",
 	"env": {
-        "npm_config_loglevel": "silent"
+        "npm_config_loglevel": "silent",
+        "DATASET_SLEEP_MS": 18000
     },
 	"template": "project_empty"
 }

@@ -1,10 +1,10 @@
 {
 	"name": "actor-testing",
-	"version": "1.4.0",
+	"version": "1.4.1",
 	"description": "This is a boilerplate of an Apify actor.",
 	"dependencies": {
-		"apify": "^1.1.2",
-		"apify-client": "^1.2.2",
+		"apify": "^1.2.1",
+		"apify-client": "^1.2.3",
 		"moment": "^2.29.1",
 		"lodash": "^4.17.21",
 		"jasmine": "^3.7.0",
@@ -16,7 +16,7 @@
 		"@types/jasmine": "^3.6.9",
 		"@types/lodash": "^4.14.168",
 		"@apify/eslint-config": "^0.1.4",
-		"eslint": "^7.25.0"
+		"eslint": "^7.27.0"
 	},
 	"scripts": {
 		"start": "node src/main.js",

@@ -9,6 +9,28 @@ const quickHash = () => {
 };
 
 /**
+ * @param {ApifyClient} client
+ * @param {string} runId
+ * @param {(num: number) => Promise<void>} sleep
+ */
+const waitForFinish = async (client, runId, sleep) => {
+    const run = client.run(runId);
+
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+        try {
+            const { status } = await run.get();
+            if (status !== 'RUNNING') {
+                break;
+            }
+            await sleep(1000);
+        } catch (e) {
+            break;
+        }
+    }
+};
+
+/**
  * @param {ApifyNM} Apify
  * @param {ApifyClient} client
  * @param {boolean} verboseLogs
@@ -92,8 +114,7 @@ const setupRun = async (Apify, client, verboseLogs = false) => {
         }
 
         await persistState();
-
-        await client.run(runId).waitForFinish();
+        await waitForFinish(client, runId, Apify.utils.sleep);
 
         if (verboseLogs) {
             Apify.utils.log.info(
