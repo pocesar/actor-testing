@@ -5,9 +5,22 @@ const common = require('./common'); // eslint-disable-line no-unused-vars
 
 /**
  * Sleep configurable from the outside. Needs to wait for storages
- * to settle. Sleeps once, lazily
+ * to settle. Sleeps once, lazily. Memoize same run IDs
+ * @returns {(run: common.Result) => Promise<void>}
  */
-const settlementSleep = async () => Apify.utils.sleep(+(process?.env?.DATASET_SLEEP_MS ?? 15000));
+const createSettlementSleep = () => {
+    /** @type {Record<string, boolean>} */
+    const memoized = {};
+
+    return async ({ runId }) => {
+        if (!memoized[runId]) {
+            memoized[runId] = true;
+            await Apify.utils.sleep(+(process?.env?.DATASET_SLEEP_MS ?? 15000));
+        }
+    };
+};
+
+const settlementSleep = createSettlementSleep();
 
 /**
  * Make the comparision composable without boilerplate
@@ -118,7 +131,7 @@ const withChecker = generateCompare(async ({ result, value, args, runFn, client,
         };
     }
 
-    await settlementSleep();
+    await settlementSleep(result);
 
     const runResult = await runFn({
         ...(isTask ? { taskId: taskArgs.taskId } : { actorId: 'lukaskrivka/results-checker' }),
@@ -162,7 +175,7 @@ const withDuplicates = generateCompare(async ({ result, value, args, runFn, clie
         };
     }
 
-    await settlementSleep();
+    await settlementSleep(result);
 
     const runResult = await runFn({
         ...(input.taskId ? { taskId: input.taskId } : { actorId: 'lukaskrivka/duplications-checker' }),
@@ -220,7 +233,7 @@ const withStatistics = generateCompare(async ({ result, value, client, format, a
     const options = safeOptions(args);
     const index = options.index || 0;
 
-    await settlementSleep();
+    await settlementSleep(result);
 
     const record = await client.keyValueStore(result.data.defaultKeyValueStoreId).getRecord(`SDK_CRAWLER_STATISTICS_${index}`);
 
@@ -251,7 +264,7 @@ const withKeyValueStore = generateCompare(async ({ result, value, client, format
         };
     }
 
-    await settlementSleep();
+    await settlementSleep(result);
 
     const record = await client.keyValueStore(result.data.defaultKeyValueStoreId).getRecord(options.keyName);
 
@@ -291,7 +304,7 @@ const withDataset = generateCompare(async ({ result, value, args, client, format
     // sometimes dataset information is wrong because there wasn't enough time
     // for it to settle for reading, so we need to wait at least 12 seconds to
     // ensure we won't fail the test because of a racing condition
-    await settlementSleep();
+    await settlementSleep(result);
 
     const [info, dataset] = await Promise.all([
         client.dataset(result.data.defaultDatasetId).get(),
