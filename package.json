@@ -1,6 +1,6 @@
 {
 	"name": "actor-testing",
-	"version": "1.4.1",
+	"version": "1.4.2",
 	"description": "This is a boilerplate of an Apify actor.",
 	"dependencies": {
 		"apify": "^1.2.1",
