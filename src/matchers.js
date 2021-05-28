@@ -7,18 +7,7 @@ const common = require('./common'); // eslint-disable-line no-unused-vars
  * Sleep configurable from the outside. Needs to wait for storages
  * to settle. Sleeps once, lazily
  */
-const createSettlementSleep = () => {
-    let didSleep = false;
-
-    return async () => {
-        if (!didSleep) {
-            didSleep = true;
-            await Apify.utils.sleep(+(process?.env?.DATASET_SLEEP_MS ?? 0));
-        }
-    };
-};
-
-const settlementSleep = createSettlementSleep();
+const settlementSleep = async () => Apify.utils.sleep(+(process?.env?.DATASET_SLEEP_MS ?? 15000));
 
 /**
  * Make the comparision composable without boilerplate
