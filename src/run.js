@@ -20,7 +20,7 @@ const waitForFinish = async (client, runId, sleep) => {
     while (true) {
         try {
             const { status } = await run.get();
-            if (status !== 'RUNNING') {
+            if (status !== 'RUNNING' && status !== 'READY') {
                 break;
             }
             await sleep(1000);
