@@ -1,4 +1,4 @@
-FROM apify/actor-node
+FROM apify/actor-node:16
 
 # Second, copy just package.json and package-lock.json since they are the only files
 # that affect NPM install in the next step
@@ -13,22 +13,13 @@ RUN npm i node-gyp -g
 RUN npm --quiet set progress=false \
  && npm install --only=prod --no-optional \
  && echo "Installed NPM packages:" \
- && npm list \
+ && (npm list || true) \
  && echo "Node.js version:" \
  && node --version \
  && echo "NPM version:" \
  && npm --version
 
-ENV npm_config_loglevel=silent
-# Next, copy the remaining files and directories with the source code.
-# Since we do this after NPM install, quick build will be really fast
-# for simple source file changes.
 COPY . ./
 
-# Optionally, specify how to launch the source code of your actor.
-# By default, Apify's base Docker images define the CMD instruction
-# that runs the Node.js source code using the command specified
-# in the "scripts.start" section of the package.json file.
-# In short, the instruction looks something like this:
-#
-# CMD npm start
+ENV APIFY_DISABLE_OUTDATED_WARNING 1
+ENV npm_config_loglevel=silent

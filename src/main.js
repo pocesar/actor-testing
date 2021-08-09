@@ -9,7 +9,7 @@ const Loader = require('jasmine/lib/loader');
 const { setupJasmine } = require('./matchers');
 const setupRun = require('./run');
 const JSONReporter = require('./collector');
-const { collectFailed, nameBreak, createNotifier } = require('./common');
+const { collectFailed, nameBreak, createNotifier, createRunLink } = require('./common');
 
 const { log } = Apify.utils;
 
@@ -63,17 +63,17 @@ Apify.main(async () => {
             return;
         }
 
+        const { actorRunId, actorId, actorTaskId, defaultKeyValueStoreId } = Apify.getEnv();
+
         if (isTimeoutSignal) {
             await notify({
-                slackMessage: `<https://my.apify.com/view/runs/${input.actorRunId}|${testName}> has timed out!`,
-                emailMessage: `Your test <a href="https://my.apify.com/view/runs/${input.actorRunId}">${testName}</a> timed out`,
+                slackMessage: `<${createRunLink(actorId, input.actorRunId)}|${testName}> has timed out!`,
+                emailMessage: `Your test <a href="${createRunLink(actorId, input.actorRunId)}">${testName}</a> timed out`,
                 subject: `${testName} has timed out!`,
             });
 
             return;
         }
-
-        const { actorRunId, actorId, actorTaskId, defaultKeyValueStoreId } = Apify.getEnv();
 
         if (abortRuns) {
             // dynamicly webhook ourselves so we can catch the CALLS from outside and abort them
@@ -156,12 +156,12 @@ Apify.main(async () => {
     const jsonReporter = new JSONReporter(
         async (testResult) => {
             const { failed, total, totalSpecs, failedSpecs } = collectFailed(testResult);
-            const { actorRunId, defaultKeyValueStoreId } = Apify.getEnv();
+            const { actorRunId, actorId, defaultKeyValueStoreId } = Apify.getEnv();
 
             await Apify.setValue('OUTPUT', testResult);
             const addName = nameBreak();
 
-            const slackMessage = `<https://my.apify.com/view/runs/${actorRunId}|${testName}> has ${
+            const slackMessage = `<${createRunLink(actorId, actorRunId)}|${testName}> has ${
                 failed.length
             }/${total} failing expectations. Failing test suites: ${failedSpecs}/${totalSpecs}. Check the <https://api.apify.com/v2/key-value-stores/${
                 defaultKeyValueStoreId

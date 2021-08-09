@@ -48,8 +48,16 @@ const formatRunMessage = (runResult) => (message) => {
         runResult.data.name ? `${runResult.data.name}\n` : ''
     }${
         runResult.data.taskName ? `${runResult.data.taskName} - ${runResult.data.actorName}` : runResult.data.actorName
-    }:${runResult.data.buildNumber}\nhttps://my.apify.com/actors/${runResult.data.actId}#/runs/${runResult.runId} : ${message}`;
+    }:${runResult.data.buildNumber}\n${createRunLink(runResult.data.actId, runResult.runId)} : ${message}`;
     return formatted;
+};
+
+/**
+ * @param {string} actorId
+ * @param {string} runId
+ */
+const createRunLink = (actorId, runId) => {
+    return `https://my.apify.com/actors/${actorId}#/runs/${runId}`;
 };
 
 /**
@@ -179,4 +187,5 @@ module.exports = {
     nameBreak,
     collectFailed,
     createNotifier,
+    createRunLink,
 };
