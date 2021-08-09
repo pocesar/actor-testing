@@ -14,7 +14,7 @@ const { log } = Apify.utils;
  *      | 'id'
  *      | 'buildNumber'
  *      | 'stats'
- *   > & { actorName: string, taskName?: string, name?: string },
+ *   > & { actorName: string, taskName?: string, name?: string, taskId?: string },
  * }} Result
  */
 
@@ -48,7 +48,7 @@ const formatRunMessage = (runResult) => (message) => {
         runResult.data.name ? `${runResult.data.name}\n` : ''
     }${
         runResult.data.taskName ? `${runResult.data.taskName} - ${runResult.data.actorName}` : runResult.data.actorName
-    }:${runResult.data.buildNumber}\n${createRunLink({ actorId: runResult.data.actId, runId: runResult.runId })} : ${message}`;
+    }:${runResult.data.buildNumber}\n${createRunLink({ actorId: runResult.data.actId, taskId: runResult.data.taskId, runId: runResult.runId })} : ${message}`;
     return formatted;
 };
 

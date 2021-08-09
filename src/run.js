@@ -93,6 +93,7 @@ const setupRun = async (Apify, client, verboseLogs = false) => {
                 hashCode: id,
                 data: {
                     ...data,
+                    taskId,
                     actorName,
                     taskName,
                     name: run.name,
