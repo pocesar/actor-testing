@@ -48,16 +48,19 @@ const formatRunMessage = (runResult) => (message) => {
         runResult.data.name ? `${runResult.data.name}\n` : ''
     }${
         runResult.data.taskName ? `${runResult.data.taskName} - ${runResult.data.actorName}` : runResult.data.actorName
-    }:${runResult.data.buildNumber}\n${createRunLink(runResult.data.actId, runResult.runId)} : ${message}`;
+    }:${runResult.data.buildNumber}\n${createRunLink({ actorId: runResult.data.actId, runId: runResult.runId })} : ${message}`;
     return formatted;
 };
 
 /**
- * @param {string} actorId
- * @param {string} runId
+ * @param {{
+ *   runId: string,
+ *   actorId: string,
+ *   taskId?: string,
+ * }} params
  */
-const createRunLink = (actorId, runId) => {
-    return `https://my.apify.com/actors/${actorId}#/runs/${runId}`;
+const createRunLink = ({ actorId, taskId, runId }) => {
+    return `https://my.apify.com/${taskId ? 'tasks' : 'actors'}/${taskId || actorId}#/runs/${runId}`;
 };
 
 /**

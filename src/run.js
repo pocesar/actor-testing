@@ -104,7 +104,7 @@ const setupRun = async (Apify, client, verboseLogs = false) => {
         /** @type {common.Result} */
         const runResult = runMap.get(id);
         const { runId } = runResult;
-        const url = common.createRunLink(actorId, runId);
+        const url = common.createRunLink({ actorId, taskId, runId });
 
         if (verboseLogs) {
             Apify.utils.log.info(

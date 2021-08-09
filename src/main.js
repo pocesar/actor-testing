@@ -67,8 +67,8 @@ Apify.main(async () => {
 
         if (isTimeoutSignal) {
             await notify({
-                slackMessage: `<${createRunLink(actorId, input.actorRunId)}|${testName}> has timed out!`,
-                emailMessage: `Your test <a href="${createRunLink(actorId, input.actorRunId)}">${testName}</a> timed out`,
+                slackMessage: `<${createRunLink({ actorId, taskId: actorTaskId, runId: input.actorRunId })}|${testName}> has timed out!`,
+                emailMessage: `Your test <a href="${createRunLink({ actorId, taskId: actorTaskId, runId: input.actorRunId })}">${testName}</a> timed out`,
                 subject: `${testName} has timed out!`,
             });
 
@@ -156,12 +156,12 @@ Apify.main(async () => {
     const jsonReporter = new JSONReporter(
         async (testResult) => {
             const { failed, total, totalSpecs, failedSpecs } = collectFailed(testResult);
-            const { actorRunId, actorId, defaultKeyValueStoreId } = Apify.getEnv();
+            const { actorRunId, actorId, actorTaskId, defaultKeyValueStoreId } = Apify.getEnv();
 
             await Apify.setValue('OUTPUT', testResult);
             const addName = nameBreak();
 
-            const slackMessage = `<${createRunLink(actorId, actorRunId)}|${testName}> has ${
+            const slackMessage = `<${createRunLink({ actorId, taskId: actorTaskId, runId: actorRunId })}|${testName}> has ${
                 failed.length
             }/${total} failing expectations. Failing test suites: ${failedSpecs}/${totalSpecs}. Check the <https://api.apify.com/v2/key-value-stores/${
                 defaultKeyValueStoreId
