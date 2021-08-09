@@ -5,7 +5,7 @@ FROM apify/actor-node:16
 COPY package*.json ./
 
 RUN apk add --no-cache libc6-compat
-RUN apk add --no-cache python make g++
+RUN apk add --no-cache python3 make g++
 RUN npm i node-gyp -g
 
 # Install NPM packages, skip optional and development dependencies to keep the
