@@ -34,10 +34,12 @@ const { log } = Apify.utils;
  */
 
 /** @param {Result} run */
-const isRunResult = (run) => run
-    && typeof run.hashCode === 'string'
-    && !!run.hashCode
-    && !!run.data;
+const isRunResult = (run) => (
+    run
+        && typeof run.hashCode === 'string'
+        && !!run.hashCode
+        && !!run.data
+);
 
 /**
  * @param {Result} runResult

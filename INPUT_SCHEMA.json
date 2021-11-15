@@ -65,6 +65,13 @@
             "type": "string",
             "editor": "textfield"
         },
+        "retryFailedTests": {
+            "title": "Retry failed tests",
+            "description": "Retry failed tests one more time",
+            "editor": "checkbox",
+            "default": false,
+            "type": "boolean"
+        },
         "slackChannel": {
             "title": "Slack channel",
             "description": "Slack channel",

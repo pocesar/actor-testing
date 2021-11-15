@@ -1,5 +1,5 @@
 const ApifyNM = require('apify'); // eslint-disable-line
-const ApifyClient = require('apify-client'); // eslint-disable-line
+const { ApifyClient } = require('apify-client'); // eslint-disable-line
 const { XXHash64 } = require('xxhash-addon');
 const common = require('./common');
 

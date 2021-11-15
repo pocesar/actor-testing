@@ -1,6 +1,7 @@
 const Apify = require('apify');
 const Jasmine = require('jasmine');
-const ApifyClient = require('apify-client');
+const { ApifyClient } = require('apify-client');
+const escapeRegex = require('escape-string-regexp');
 const { SpecReporter, StacktraceOption } = require('jasmine-spec-reporter');
 const vm = require('vm');
 const _ = require('lodash');
@@ -25,6 +26,7 @@ Apify.main(async () => {
         verboseLogs = true,
         isAbortSignal = false,
         isTimeoutSignal = false,
+        retryFailedTests = false,
         abortRuns = true,
     } = input;
 
@@ -153,10 +155,20 @@ Apify.main(async () => {
 
     instance.addReporter(specReporter);
 
+    /**
+     * @type {(value: any) => void}
+     */
+    let promiseResolve;
+    const testResultPromise = new Promise((o) => {
+        promiseResolve = o;
+    });
+
     const jsonReporter = new JSONReporter(
         async (testResult) => {
             const { failed, total, totalSpecs, failedSpecs } = collectFailed(testResult);
             const { actorRunId, actorId, actorTaskId, defaultKeyValueStoreId } = Apify.getEnv();
+
+            promiseResolve({ failed, total, totalSpecs, failedSpecs });
 
             await Apify.setValue('OUTPUT', testResult);
             const addName = nameBreak();
@@ -229,9 +241,29 @@ Apify.main(async () => {
     });
 
     instance.addSpecFile(defaultFilename);
-    instance.helperFiles.push('jasmine-expect');
+    instance.addHelperFile('jasmine-expect');
     instance.randomizeTests(false);
+    instance.stopOnSpecFailure(false);
     instance.stopSpecOnExpectationFailure(false);
+    instance.exitOnCompletion = false;
 
-    await instance.execute(undefined, (filter || []).join('|') || undefined);
+    const filteredTests = [...new Set((filter || []).map((s) => s.trim()).filter(Boolean))]
+        .map(escapeRegex)
+        .join('|');
+    await instance.execute(undefined, filteredTests.length ? `(${filteredTests})` : undefined);
+    const output = await testResultPromise;
+
+    if (output.failedSpecs > 0) {
+        if (!retryFailedTests) {
+            throw new Error('Failed tests but not retrying.');
+        }
+
+        if (!Apify.isAtHome()) {
+            await Apify.metamorph(Apify.getEnv().actorId, {
+                ...input,
+                retryFailedTests: false,
+                filter: output.failed.map(({ name }) => name),
+            });
+        }
+    }
 });

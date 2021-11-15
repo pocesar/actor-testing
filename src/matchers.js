@@ -1,5 +1,5 @@
 const Apify = require('apify');
-const ApifyClient = require('apify-client'); // eslint-disable-line no-unused-vars
+const { ApifyClient } = require('apify-client'); // eslint-disable-line no-unused-vars
 const Jasmine = require('jasmine'); // eslint-disable-line no-unused-vars
 const common = require('./common'); // eslint-disable-line no-unused-vars
 
@@ -15,7 +15,7 @@ const createSettlementSleep = () => {
     return async ({ runId }) => {
         if (!memoized[runId]) {
             memoized[runId] = true;
-            await Apify.utils.sleep(+(process?.env?.DATASET_SLEEP_MS ?? 15000));
+            await Apify.utils.sleep(+(process?.env?.DATASET_SLEEP_MS ?? 18000));
         }
     };
 };
@@ -302,7 +302,7 @@ const withDataset = generateCompare(async ({ result, value, args, client, format
     const options = safeOptions(args);
 
     // sometimes dataset information is wrong because there wasn't enough time
-    // for it to settle for reading, so we need to wait at least 12 seconds to
+    // for it to settle for reading, so we need to wait at least some seconds to
     // ensure we won't fail the test because of a racing condition
     await settlementSleep(result);
 
