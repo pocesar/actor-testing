@@ -258,7 +258,9 @@ Apify.main(async () => {
             throw new Error('Failed tests but not retrying.');
         }
 
-        if (!Apify.isAtHome()) {
+        if (Apify.isAtHome()) {
+            log.warning(`Retrying ${output.failed.length} tests`);
+
             await Apify.metamorph(Apify.getEnv().actorId, {
                 ...input,
                 retryFailedTests: false,
