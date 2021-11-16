@@ -36,6 +36,10 @@ Apify.main(async () => {
         token,
     });
 
+    if (verboseLogs) {
+        log.info('Current input', input);
+    }
+
     const defaultFilename = 'test.js';
 
     let testName = 'Actor tests';
@@ -170,6 +174,11 @@ Apify.main(async () => {
 
             promiseResolve({ failed, total, totalSpecs, failedSpecs });
 
+            if (failedSpecs && retryFailedTests) {
+                // no report of errors to email / slack before retrying
+                return;
+            }
+
             await Apify.setValue('OUTPUT', testResult);
             const addName = nameBreak();
 
@@ -204,7 +213,7 @@ Apify.main(async () => {
     instance.addReporter(jsonReporter);
 
     jasmine.DEFAULT_TIMEOUT_INTERVAL = defaultTimeout;
-    const runFn = await setupRun(Apify, client, verboseLogs);
+    const runFn = await setupRun(Apify, client, verboseLogs, retryFailedTests);
 
     // jasmine executes everything as global, so we just eval it here
     ((context) => {
@@ -250,6 +259,7 @@ Apify.main(async () => {
     const filteredTests = [...new Set((filter || []).map((s) => s.trim()).filter(Boolean))]
         .map(escapeRegex)
         .join('|');
+
     await instance.execute(undefined, filteredTests.length ? `(${filteredTests})` : undefined);
     const output = await testResultPromise;
 

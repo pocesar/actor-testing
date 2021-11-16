@@ -34,9 +34,10 @@ const waitForFinish = async (client, runId, sleep) => {
  * @param {ApifyNM} Apify
  * @param {ApifyClient} client
  * @param {boolean} verboseLogs
+ * @param {boolean} retryFailedTests Need this as a nonce to calls
  * @return {Promise<common.Runner>}
  */
-const setupRun = async (Apify, client, verboseLogs = false) => {
+const setupRun = async (Apify, client, verboseLogs = false, retryFailedTests = false) => {
     const hasher = quickHash();
 
     const kv = await Apify.openKeyValueStore();
@@ -61,7 +62,7 @@ const setupRun = async (Apify, client, verboseLogs = false) => {
         }
 
         const isTask = !!taskId;
-        const id = hasher(JSON.stringify(run));
+        const id = hasher(JSON.stringify({ ...run, retryFailedTests }));
 
         if (!runMap.has(id)) {
             // looks duplicated code, but we need to run it once,

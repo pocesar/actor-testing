@@ -1,33 +1,33 @@
 {
-	"name": "actor-testing",
-	"version": "1.6.0",
-	"description": "This is a boilerplate of an Apify actor.",
-	"dependencies": {
-		"apify": "^2.1.0",
-		"apify-client": "^2.0.2",
-		"moment": "^2.29.1",
-		"lodash": "^4.17.21",
-		"jasmine": "^3.10.0",
-		"jasmine-expect": "^5.0.0",
-		"jasmine-spec-reporter": "^7.0.0",
-		"xxhash-addon": "^1.4.0",
+    "name": "actor-testing",
+    "version": "1.6.0",
+    "description": "This is a boilerplate of an Apify actor.",
+    "dependencies": {
+        "apify": "^2.1.0",
+        "apify-client": "^2.0.2",
+        "moment": "^2.29.1",
+        "lodash": "^4.17.21",
+        "jasmine": "^3.10.0",
+        "jasmine-expect": "^5.0.0",
+        "jasmine-spec-reporter": "^7.0.0",
+        "xxhash-addon": "^1.4.0",
         "escape-string-regexp": "^4.0.0"
-	},
-	"devDependencies": {
-		"@types/jasmine": "^3.10.2",
-		"@types/lodash": "^4.14.176",
-		"@apify/eslint-config": "^0.1.4",
-		"eslint": "^7.32.0"
-	},
-	"scripts": {
-		"start": "node src/main.js",
-		"lint": "./node_modules/.bin/eslint ./src --ext .js,.jsx",
-		"lint:fix": "./node_modules/.bin/eslint ./src --ext .js,.jsx --fix",
-		"test": "echo \"Error: oops, the actor has no tests yet, sad!\" && exit 1"
-	},
-	"author": {
-		"name": "Paulo Cesar",
-		"url": "https://github.com/pocesar"
-	},
-	"license": "Apache-2.0"
+    },
+    "devDependencies": {
+        "@types/jasmine": "^3.10.2",
+        "@types/lodash": "^4.14.176",
+        "@apify/eslint-config": "^0.1.4",
+        "eslint": "^7.32.0"
+    },
+    "scripts": {
+        "start": "node src/main.js",
+        "lint": "./node_modules/.bin/eslint ./src --ext .js,.jsx",
+        "lint:fix": "./node_modules/.bin/eslint ./src --ext .js,.jsx --fix",
+        "test": "echo \"Error: oops, the actor has no tests yet, sad!\" && exit 1"
+    },
+    "author": {
+        "name": "Paulo Cesar",
+        "url": "https://github.com/pocesar"
+    },
+    "license": "Apache-2.0"
 }
