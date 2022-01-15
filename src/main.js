@@ -253,7 +253,7 @@ Apify.main(async () => {
     instance.addHelperFile('jasmine-expect');
     instance.randomizeTests(false);
     instance.stopOnSpecFailure(false);
-    instance.stopSpecOnExpectationFailure(false);
+    instance.stopSpecOnExpectationFailure(true);
     instance.exitOnCompletion = false;
 
     const filteredTests = [...new Set((filter || []).map((s) => s.trim()).filter(Boolean))]
