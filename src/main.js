@@ -186,7 +186,7 @@ Apify.main(async () => {
                 failed.length
             }/${total} failing expectations. Failing test suites: ${failedSpecs}/${totalSpecs}. Check the <https://api.apify.com/v2/key-value-stores/${
                 defaultKeyValueStoreId
-            }/records/OUTPUT?disableRedirect=true|OUTPUT> for full details.\n${failed.map((s) => `${addName(s.name, ':\n')}${s.markdown}`).join('\n')}`;
+            }/records/OUTPUT?disableRedirect=true|OUTPUT> for full details.\n${failed.map((s) => `${addName(s.name, ':\n')}${s.markdown}`).slice(0, 1).join('\n')}`;
 
             const emailMessage = `Check the <a href="https://api.apify.com/v2/key-value-stores/${
                 defaultKeyValueStoreId
