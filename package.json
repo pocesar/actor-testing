@@ -8,7 +8,7 @@
         "apify-client": "^2.0.7",
         "moment": "^2.29.1",
         "lodash": "^4.17.21",
-        "jasmine": "^3.99.0",
+        "jasmine": "3.10.0",
         "jasmine-expect": "^5.0.0",
         "jasmine-spec-reporter": "^7.0.0",
         "xxhash-addon": "^1.4.0",
