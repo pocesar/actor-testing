@@ -62,7 +62,7 @@ const formatRunMessage = (runResult) => (message) => {
  * }} params
  */
 const createRunLink = ({ actorId, taskId, runId }) => {
-    return `https://my.apify.com/${taskId ? 'tasks' : 'actors'}/${taskId || actorId}#/runs/${runId}`;
+    return `https://my.apify.com/${taskId ? 'tasks' : 'actors'}/${taskId || actorId}/runs/${runId}`;
 };
 
 /**
