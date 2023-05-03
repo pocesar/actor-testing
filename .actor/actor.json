@@ -1,0 +1,9 @@
+{
+	"actorSpecification": 1,
+	"environmentVariables": {
+		"npm_config_loglevel": "silent"
+	},
+	"name": "actor-testing",
+	"version": "0.0",
+	"buildTag": "latest"
+}
