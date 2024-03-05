@@ -108,6 +108,7 @@ Apify.main(async () => {
                 ...(actorTaskId ? {} : {
                     slackToken: input.slackToken,
                     slackChannel: input.slackChannel,
+                    slackPrefix: input.slackPrefix,
                     email: input.email,
                     token,
                     testName,
