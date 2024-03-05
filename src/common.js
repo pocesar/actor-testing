@@ -144,7 +144,7 @@ const nameBreak = () => {
 /**
  * Notify Slack / Email
  *
- * @param {{ slackToken?: string, slackChannel?: string, email?: string }} input
+ * @param {{ slackToken?: string, slackChannel?: string, email?: string, slackPrefix?: string }} input
  * @returns {(params: { emailMessage?: string, slackMessage?: string, subject?: string }) => Promise<void>}
  */
 const createNotifier = (input) => {
@@ -153,10 +153,11 @@ const createNotifier = (input) => {
             log.info(`Posting to channel ${input.slackChannel}`);
 
             try {
+                const slackPrefix = input.slackPrefix ? `${input.slackPrefix} ` : '';
                 await Apify.call('katerinahronik/slack-message', {
                     token: input.slackToken,
                     channel: input.slackChannel,
-                    text: slackMessage,
+                    text: `${slackPrefix}${slackMessage}`,
                 }, {
                     fetchOutput: false,
                     waitSecs: 1,
