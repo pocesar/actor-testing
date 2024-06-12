@@ -239,6 +239,7 @@ Apify.main(async () => {
 
             script.runInThisContext()({
                 ...context,
+                jasmine,
                 input: {
                     ...input,
                     customData: input.customData || {},
