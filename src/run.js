@@ -127,6 +127,9 @@ const setupRun = async (Apify, client, verboseLogs = false, retryFailedTests = f
 
         await persistState();
 
+        // Sleep 5 sec so dataset itemCount is properly updated
+        await new Promise((res) => setTimeout(res, 5000));
+
         return {
             ...runResult,
             format: common.formatRunMessage(runResult),
