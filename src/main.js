@@ -246,6 +246,8 @@ Apify.main(async () => {
                 },
                 _,
                 moment,
+                Apify,
+                apifyClient: client,
             });
         });
     })({

@@ -35,6 +35,8 @@ The testing interface is familiar with Jasmine BDD tests, but with Apify specifi
     expect, // default Jasmine expect
     _, // lodash as a helper to traverse array items and objects
     moment // Moment.JS to help with dates and time math
+    Apify // Apify SDK v2
+    apifyClient // Apify client v2
 }) => {
 
   // describe is not needed, but it's good to keep everything tidy
