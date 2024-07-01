@@ -95,7 +95,7 @@ const setupRun = async (Apify, client, verboseLogs = false, retryFailedTests = f
         const isTask = !!taskId;
         const id = hasher(JSON.stringify({ ...run, retryFailedTests }));
 
-        const prefill = prefilledInput ? getActorInputPrefill(actorId, options.build) : {};
+        const prefill = prefilledInput ? await getActorInputPrefill(actorId, options.build) : {};
 
         if (!runMap.has(id)) {
             // looks duplicated code, but we need to run it once,
