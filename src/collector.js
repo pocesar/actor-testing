@@ -1,9 +1,9 @@
-const Apify = require('apify');
+import Apify from 'apify';
 
 const { log } = Apify.utils;
 
 // adapted from https://github.com/DrewML/jasmine-json-test-reporter
-module.exports = class {
+export default class {
     /**
      * @param {(results: any, info: any) => Promise<void>} onComplete
      * @param {boolean} [verboseLogs]

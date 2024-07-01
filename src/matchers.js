@@ -1,6 +1,6 @@
-const { ApifyClient } = require('apify-client'); // eslint-disable-line no-unused-vars
-const Jasmine = require('jasmine'); // eslint-disable-line no-unused-vars
-const common = require('./common'); // eslint-disable-line no-unused-vars
+import { ApifyClient } from 'apify-client'; // eslint-disable-line no-unused-vars
+import Jasmine from 'jasmine'; // eslint-disable-line no-unused-vars
+import * as common from './common.js'; // eslint-disable-line no-unused-vars
 
 /**
  * Make the comparision composable without boilerplate
@@ -290,7 +290,7 @@ const withDataset = generateCompare(async ({ result, value, args, client, format
  * @param {ApifyClient} client
  * @param {common.Runner} runFn
  */
-const setupJasmine = (jasmine, client, runFn) => {
+export const setupJasmine = (jasmine, client, runFn) => {
     jasmine.env.addAsyncMatchers({
         toHaveStatus: toHaveStatus(client, runFn),
         withLog: withLog(client, runFn),
@@ -304,6 +304,3 @@ const setupJasmine = (jasmine, client, runFn) => {
     });
 };
 
-module.exports = {
-    setupJasmine,
-};

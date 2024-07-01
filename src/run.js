@@ -1,7 +1,7 @@
-const ApifyNM = require('apify'); // eslint-disable-line
-const { ApifyClient } = require('apify-client'); // eslint-disable-line
-const { XXHash64 } = require('xxhash-addon');
-const common = require('./common');
+import ApifyNM from 'apify'; // eslint-disable-line
+import { ApifyClient } from 'apify-client'; // eslint-disable-line
+import { XXHash64 } from 'xxhash-addon';
+import * as common from './common.js';
 
 const quickHash = () => {
     const hasher = new XXHash64();
@@ -173,4 +173,4 @@ const setupRun = async (Apify, client, verboseLogs = false, retryFailedTests = f
     };
 };
 
-module.exports = setupRun;
+export default setupRun;
