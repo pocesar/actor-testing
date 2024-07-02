@@ -95,6 +95,7 @@ const setupRun = async (Apify, client, verboseLogs = false, retryFailedTests = f
         const id = hasher(JSON.stringify({ ...run, retryFailedTests }));
 
         const prefill = prefilledInput ? await getActorInputPrefill(client, actorId, options.build) : {};
+        const maxResults = prefill.maxResults || prefill.resultsLimit;
 
         if (!runMap.has(id)) {
             // looks duplicated code, but we need to run it once,
@@ -168,6 +169,7 @@ const setupRun = async (Apify, client, verboseLogs = false, retryFailedTests = f
         return {
             ...runResult,
             format: common.formatRunMessage(runResult),
+            maxResults,
         };
     };
 };
