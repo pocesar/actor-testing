@@ -303,4 +303,3 @@ export const setupJasmine = (jasmine, client, runFn) => {
         withStatistics: withStatistics(client, runFn),
     });
 };
-

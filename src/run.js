@@ -34,9 +34,9 @@ const waitForFinish = async (client, runId, sleep) => {
  * @param {ApifyClient} client
  * @param {string} actorId
  * @param {string} build
- * @return {Promise<Record<string, any>>}
+ * @return {Promise<{ defaultObj: Record<string, any>, prefill: Record<string, any> }>}
  */
-const getActorInputPrefill = async (client, actorId, build = 'latest') => {
+const getActorInputInfo = async (client, actorId, build = 'latest') => {
     const actorInfo = await client.actor(actorId).get();
 
     const { buildId } = actorInfo.taggedBuilds[build];
@@ -45,16 +45,24 @@ const getActorInputPrefill = async (client, actorId, build = 'latest') => {
 
     const inputSchema = JSON.parse(buildInfo.inputSchema);
 
+    const defaultObj = {};
     const prefill = {};
 
     for (const [propertyName, propertyValue] of Object.entries(inputSchema.properties)) {
         if (propertyValue.prefill !== undefined) {
             prefill[propertyName] = propertyValue.prefill;
         }
+
+        if (propertyValue.default !== undefined) {
+            defaultObj[propertyName] = propertyValue.default;
+        }
     }
 
-    return prefill;
-}
+    return {
+        defaultObj,
+        prefill,
+    };
+};
 
 /**
  * @param {ApifyNM} Apify
@@ -94,8 +102,11 @@ const setupRun = async (Apify, client, verboseLogs = false, retryFailedTests = f
         const isTask = !!taskId;
         const id = hasher(JSON.stringify({ ...run, retryFailedTests }));
 
-        const prefill = prefilledInput ? await getActorInputPrefill(client, actorId, options.build) : {};
-        const maxResults = prefill.maxResults || prefill.resultsLimit;
+        const { defaultObj, prefill } = prefilledInput ? await getActorInputInfo(client, actorId, options.build) : {};
+        const maxResults = prefill.maxResults
+            || prefill.resultsLimit
+            || defaultObj.maxResults
+            || defaultObj.resultsLimit;
 
         if (!runMap.has(id)) {
             // looks duplicated code, but we need to run it once,

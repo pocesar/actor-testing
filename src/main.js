@@ -14,7 +14,6 @@ import setupRun from './run.js';
 import JSONReporter from './collector.js';
 import { collectFailed, nameBreak, createNotifier, createRunLink } from './common.js';
 
-
 const { log } = Apify.utils;
 
 Apify.main(async () => {
