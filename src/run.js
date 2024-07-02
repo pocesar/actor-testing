@@ -31,20 +31,19 @@ const waitForFinish = async (client, runId, sleep) => {
 };
 
 /**
+ * @param {ApifyClient} client
  * @param {string} actorId
  * @param {string} build
  * @return {Promise<Record<string, any>>}
  */
-const getActorInputPrefill = async (actorId, build = 'latest') => {
-    const actorInfoResponse = await fetch(`https://api.apify.com/v2/acts/${actorId}`);
-    const actorInfo = JSON.parse(await actorInfoResponse.text());
+const getActorInputPrefill = async (client, actorId, build = 'latest') => {
+    const actorInfo = await client.actor(actorId).get();
 
-    const { buildId } = actorInfo.data.taggedBuilds[build];
+    const { buildId } = actorInfo.taggedBuilds[build];
 
-    const buildInfoResponse = await fetch(`https://api.apify.com/v2/actor-builds/${buildId}`);
-    const buildInfo = JSON.parse(await buildInfoResponse.text());
+    const buildInfo = await client.build(buildId).get();
 
-    const inputSchema = JSON.parse(buildInfo.data.inputSchema);
+    const inputSchema = JSON.parse(buildInfo.inputSchema);
 
     const prefill = {};
 
@@ -95,7 +94,7 @@ const setupRun = async (Apify, client, verboseLogs = false, retryFailedTests = f
         const isTask = !!taskId;
         const id = hasher(JSON.stringify({ ...run, retryFailedTests }));
 
-        const prefill = prefilledInput ? await getActorInputPrefill(actorId, options.build) : {};
+        const prefill = prefilledInput ? await getActorInputPrefill(client, actorId, options.build) : {};
 
         if (!runMap.has(id)) {
             // looks duplicated code, but we need to run it once,
