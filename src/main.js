@@ -1,16 +1,18 @@
-const Apify = require('apify');
-const Jasmine = require('jasmine');
-const { ApifyClient } = require('apify-client');
-const escapeRegex = require('escape-string-regexp');
-const { SpecReporter, StacktraceOption } = require('jasmine-spec-reporter');
-const vm = require('vm');
-const _ = require('lodash');
-const moment = require('moment');
-const Loader = require('jasmine/lib/loader');
-const { setupJasmine } = require('./matchers');
-const setupRun = require('./run');
-const JSONReporter = require('./collector');
-const { collectFailed, nameBreak, createNotifier, createRunLink } = require('./common');
+import Apify from 'apify';
+import Jasmine from 'jasmine';
+import { ApifyClient } from 'apify-client';
+import escapeRegex from 'escape-string-regexp';
+import { SpecReporter, StacktraceOption } from 'jasmine-spec-reporter';
+import vm from 'vm';
+import _ from 'lodash';
+import moment from 'moment';
+import { type } from 'arktype';
+import { parseAsSchema } from '@arktype/schema';
+import Loader from 'jasmine/lib/loader.js';
+import { setupJasmine } from './matchers.js';
+import setupRun from './run.js';
+import JSONReporter from './collector.js';
+import { collectFailed, nameBreak, createNotifier, createRunLink } from './common.js';
 
 const { log } = Apify.utils;
 
@@ -126,7 +128,7 @@ Apify.main(async () => {
         loader: new Loader({
             requireShim: (filename) => {
                 if (filename === 'jasmine-expect') {
-                    return require('jasmine-expect'); // eslint-disable-line
+                    return import('jasmine-expect'); // eslint-disable-line
                 }
                 return Promise.resolve();
             },
@@ -248,6 +250,8 @@ Apify.main(async () => {
                 moment,
                 Apify,
                 apifyClient: client,
+                type,
+                parseAsSchema,
             });
         });
     })({

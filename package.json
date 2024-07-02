@@ -6,6 +6,7 @@
     "dependencies": {
         "apify": "^2.2.1",
         "apify-client": "^2.9",
+        "arktype": "2.0.0-dev.26",
         "moment": "^2.29.1",
         "lodash": "^4.17.21",
         "jasmine": "3.10.0",
@@ -30,5 +31,6 @@
         "name": "Paulo Cesar",
         "url": "https://github.com/pocesar"
     },
+    "type": "module",
     "license": "Apache-2.0"
 }

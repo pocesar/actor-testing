@@ -1,4 +1,4 @@
-const Apify = require('apify');
+import Apify from 'apify';
 
 const { log } = Apify.utils;
 
@@ -187,7 +187,7 @@ const createNotifier = (input) => {
     };
 };
 
-module.exports = {
+export {
     formatRunMessage,
     isRunResult,
     nameBreak,

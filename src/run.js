@@ -1,7 +1,7 @@
-const ApifyNM = require('apify'); // eslint-disable-line
-const { ApifyClient } = require('apify-client'); // eslint-disable-line
-const { XXHash64 } = require('xxhash-addon');
-const common = require('./common');
+import ApifyNM from 'apify'; // eslint-disable-line
+import { ApifyClient } from 'apify-client'; // eslint-disable-line
+import { XXHash64 } from 'xxhash-addon';
+import * as common from './common.js';
 
 const quickHash = () => {
     const hasher = new XXHash64();
@@ -31,6 +31,40 @@ const waitForFinish = async (client, runId, sleep) => {
 };
 
 /**
+ * @param {ApifyClient} client
+ * @param {string} actorId
+ * @param {string} build
+ * @return {Promise<{ defaultObj: Record<string, any>, prefill: Record<string, any> }>}
+ */
+const getActorInputInfo = async (client, actorId, build = 'latest') => {
+    const actorInfo = await client.actor(actorId).get();
+
+    const { buildId } = actorInfo.taggedBuilds[build];
+
+    const buildInfo = await client.build(buildId).get();
+
+    const inputSchema = JSON.parse(buildInfo.inputSchema);
+
+    const defaultObj = {};
+    const prefill = {};
+
+    for (const [propertyName, propertyValue] of Object.entries(inputSchema.properties)) {
+        if (propertyValue.prefill !== undefined) {
+            prefill[propertyName] = propertyValue.prefill;
+        }
+
+        if (propertyValue.default !== undefined) {
+            defaultObj[propertyName] = propertyValue.default;
+        }
+    }
+
+    return {
+        defaultObj,
+        prefill,
+    };
+};
+
+/**
  * @param {ApifyNM} Apify
  * @param {ApifyClient} client
  * @param {boolean} verboseLogs
@@ -51,7 +85,7 @@ const setupRun = async (Apify, client, verboseLogs = false, retryFailedTests = f
     Apify.events.on('persistState', persistState);
 
     return async (run) => {
-        const { taskId, actorId, input = {}, options = {} } = run;
+        const { taskId, actorId, input = {}, options = {}, prefilledInput = false } = run;
 
         if (!taskId && !actorId) {
             throw new Error('You need to provide either taskId or actorId');
@@ -61,13 +95,26 @@ const setupRun = async (Apify, client, verboseLogs = false, retryFailedTests = f
             throw new Error('You need to provide just taskId or actorId, but not both');
         }
 
+        if (taskId && prefilledInput) {
+            throw new Error('prefilledInput currently works only with actorId, not taskId');
+        }
+
         const isTask = !!taskId;
         const id = hasher(JSON.stringify({ ...run, retryFailedTests }));
+
+        const { defaultObj, prefill } = prefilledInput ? await getActorInputInfo(client, actorId, options.build) : {};
+        const maxResults = prefill.maxResults
+            || prefill.resultsLimit
+            || defaultObj.maxResults
+            || defaultObj.resultsLimit;
 
         if (!runMap.has(id)) {
             // looks duplicated code, but we need to run it once,
             // as it shouldn't run when there's a migration
-            const runResult = await client[isTask ? 'task' : 'actor'](taskId || actorId).call(input, {
+            const runResult = await client[isTask ? 'task' : 'actor'](taskId || actorId).call({
+                ...prefill,
+                ...input,
+            }, {
                 ...options,
                 waitSecs: 0,
             });
@@ -133,8 +180,9 @@ const setupRun = async (Apify, client, verboseLogs = false, retryFailedTests = f
         return {
             ...runResult,
             format: common.formatRunMessage(runResult),
+            maxResults,
         };
     };
 };
 
-module.exports = setupRun;
+export default setupRun;
