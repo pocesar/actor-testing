@@ -102,7 +102,8 @@ const setupRun = async (Apify, client, verboseLogs = false, retryFailedTests = f
         const isTask = !!taskId;
         const id = hasher(JSON.stringify({ ...run, retryFailedTests }));
 
-        const { defaultObj, prefill } = prefilledInput ? await getActorInputInfo(client, actorId, options.build) : {};
+        const { defaultObj = {}, prefill = {} } = prefilledInput ? await getActorInputInfo(client, actorId, options.build) : {};
+
         const maxResults = prefill.maxResults
             || prefill.resultsLimit
             || defaultObj.maxResults
