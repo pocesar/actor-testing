@@ -278,6 +278,12 @@ const withDataset = generateCompare(async ({ result, value, args, client, format
         client.dataset(result.data.defaultDatasetId).listItems({ ...options }),
     ]);
 
+    // To prevent bugs related to platform needing sleep to update info.itemCount, we hardset it to the actual length of items
+    if (!options.limit && !options.offset) {
+        info.itemCount = dataset.items?.length || 0;
+        info.cleanItemCount = dataset.items?.length || 0;
+    }
+
     return callbackValue({
         value,
         args: { dataset, info },

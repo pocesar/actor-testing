@@ -82,6 +82,8 @@ const setupRun = async (Apify, client, verboseLogs = false, retryFailedTests = f
 
         const { defaultObj = {}, prefill = {} } = prefilledInput ? await getActorInputInfo(client, actorId, options.build) : {};
 
+        // TODO: This just lists some common max results fields we use but there is plenty more
+        // Devs should use 'runInput' to calculate that themselves if they are not sure
         const maxResults = prefill.maxResults
             || prefill.resultsLimit
             || defaultObj.maxResults

@@ -6,15 +6,7 @@ const { log } = Apify.utils;
  * @typedef {{
  *   runId: string,
  *   hashCode: string,
- *   data: Pick<Apify.ActorRun,
- *      | 'actId'
- *      | 'defaultDatasetId'
- *      | 'defaultKeyValueStoreId'
- *      | 'defaultRequestQueueId'
- *      | 'id'
- *      | 'buildNumber'
- *      | 'stats'
- *   > & { actorName: string, taskName?: string, name?: string, taskId?: string },
+ *   data: Apify.ActorRun & { actorName: string, taskName?: string, name?: string, taskId?: string },
  * }} Result
  */
 
