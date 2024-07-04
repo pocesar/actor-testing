@@ -48,13 +48,10 @@ const getActorInputInfo = async (client, actorId, build = 'latest') => {
 };
 
 /**
- * @param {ApifyNM} Apify
- * @param {ApifyClient} client
- * @param {boolean} verboseLogs
- * @param {boolean} retryFailedTests Need this as a nonce to calls
+ * @param {{ Apify: ApifyNM, client: ApifyClient, verboseLogs: boolean, retryFailedTests: boolean, input: Record<string, any>}}
  * @return {Promise<common.Runner>}
  */
-const setupRun = async (Apify, client, verboseLogs = false, retryFailedTests = false) => {
+const setupRun = async ({ Apify, client, verboseLogs = false, retryFailedTests = false, input }) => {
     const hasher = quickHash();
 
     const kv = await Apify.openKeyValueStore();
@@ -94,6 +91,12 @@ const setupRun = async (Apify, client, verboseLogs = false, retryFailedTests = f
             || defaultObj.maxResults
             || defaultObj.resultsLimit;
 
+        // We resolve the build from string or object <actorOrTaskId>:<build> passed in input but user options have preference
+        const buildFromInput = input.customData?.build?.[actorId || taskId] || input.customData.build;
+        const build = buildFromInput || options.build || 'latest';
+
+        console.log(`Using build ${build} for ${actorId || taskId}`);
+
         if (!runMap.has(id)) {
             // looks duplicated code, but we need to run it once,
             // as it shouldn't run when there's a migration
@@ -101,6 +104,7 @@ const setupRun = async (Apify, client, verboseLogs = false, retryFailedTests = f
                 ...prefill,
                 ...input,
             }, {
+                build,
                 ...options,
                 waitSecs: 0,
             });

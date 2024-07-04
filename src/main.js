@@ -218,7 +218,7 @@ Apify.main(async () => {
     instance.addReporter(jsonReporter);
 
     jasmine.DEFAULT_TIMEOUT_INTERVAL = defaultTimeout;
-    const runFn = await setupRun(Apify, client, verboseLogs, retryFailedTests);
+    const runFn = await setupRun({ Apify, client, verboseLogs, retryFailedTests, input });
 
     // jasmine executes everything as global, so we just eval it here
     ((context) => {
