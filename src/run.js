@@ -101,7 +101,7 @@ const setupRun = async (Apify, client, verboseLogs = false, retryFailedTests = f
             });
 
 
-            const { name: actorName } = await client.actor(data.actId).get();
+            const { name: actorName } = await client.actor(runInfo.actId).get();
             const { name: taskName } = isTask && taskId ? await client.task(taskId).get() : {};
 
             runMap.set(id, {
