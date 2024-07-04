@@ -134,6 +134,20 @@ const result = await run({
 
 The `run` is idempotent and will run the same tasks once per test, but you can specify the `nonce` to force running it everytime
 
+The `run` function returns an object with standard API client run info with extra data:
+```js
+runResult = {
+    runInput, // Actual input of the run with default fields filled
+    maxResults, // Attempts at parsing maxResults or similar field from input (use runInput to do this yourself)
+    data: {
+        ...runInfo,
+        taskId,
+        actorName,
+        taskName,
+        name: run.name,
+    }
+```
+
 ## Matchers
 
 Those async matchers are lazy and only evaluated when you use them. You should use the result from `run` function to run `expectAsync()` on.

@@ -10,28 +10,6 @@ const quickHash = () => {
 
 /**
  * @param {ApifyClient} client
- * @param {string} runId
- * @param {(num: number) => Promise<void>} sleep
- */
-const waitForFinish = async (client, runId, sleep) => {
-    const run = client.run(runId);
-
-    // eslint-disable-next-line no-constant-condition
-    while (true) {
-        try {
-            const { status } = await run.get();
-            if (status !== 'RUNNING' && status !== 'READY') {
-                break;
-            }
-            await sleep(1000);
-        } catch (e) {
-            break;
-        }
-    }
-};
-
-/**
- * @param {ApifyClient} client
  * @param {string} actorId
  * @param {string} build
  * @return {Promise<{ defaultObj: Record<string, any>, prefill: Record<string, any> }>}
@@ -112,7 +90,7 @@ const setupRun = async (Apify, client, verboseLogs = false, retryFailedTests = f
         if (!runMap.has(id)) {
             // looks duplicated code, but we need to run it once,
             // as it shouldn't run when there's a migration
-            const runResult = await client[isTask ? 'task' : 'actor'](taskId || actorId).call({
+            const runInfo = await client[isTask ? 'task' : 'actor'](taskId || actorId).call({
                 ...prefill,
                 ...input,
             }, {
@@ -120,20 +98,6 @@ const setupRun = async (Apify, client, verboseLogs = false, retryFailedTests = f
                 waitSecs: 0,
             });
 
-            const {
-                buildId,
-                containerUrl,
-                exitCode,
-                meta,
-                options: opts,
-                output,
-                status,
-                startedAt,
-                finishedAt,
-                userId,
-                runtime,
-                ...data
-            } = runResult;
 
             const { name: actorName } = await client.actor(data.actId).get();
             const { name: taskName } = isTask && taskId ? await client.task(taskId).get() : {};
@@ -141,13 +105,13 @@ const setupRun = async (Apify, client, verboseLogs = false, retryFailedTests = f
             runMap.set(id, {
                 hashCode: id,
                 data: {
-                    ...data,
+                    ...runInfo,
                     taskId,
                     actorName,
                     taskName,
                     name: run.name,
                 },
-                runId: runResult.id,
+                runId: runInfo.id,
             });
         }
 
@@ -164,7 +128,10 @@ const setupRun = async (Apify, client, verboseLogs = false, retryFailedTests = f
         }
 
         await persistState();
-        await waitForFinish(client, runId, Apify.utils.sleep);
+        await client.run(runId).waitForFinish();
+
+        // We fetch the actual input which will include defaults added by platform so devs can use it
+        const runInput = (await client.keyValueStore(runResult.data.defaultKeyValueStoreId).getRecord('INPUT'))?.value || {};
 
         if (verboseLogs) {
             Apify.utils.log.info(
@@ -175,13 +142,14 @@ const setupRun = async (Apify, client, verboseLogs = false, retryFailedTests = f
 
         await persistState();
 
-        // Sleep 5 sec so dataset itemCount is properly updated
-        await new Promise((res) => setTimeout(res, 5000));
+        // NOTE: We used to sleep here to get dataset.itemCount update but it is not necessary
+        // Devs should instead use dataset.items which we already fetch anyway and those are always up to date
 
         return {
             ...runResult,
             format: common.formatRunMessage(runResult),
             maxResults,
+            runInput,
         };
     };
 };
