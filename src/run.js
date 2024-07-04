@@ -17,6 +17,11 @@ const quickHash = () => {
 const getActorInputInfo = async (client, actorId, build = 'latest') => {
     const actorInfo = await client.actor(actorId).get();
 
+    // FIXME: This will not work with build numbers, we need to use different API for that (not sure if possible without token?)
+    if (build.match(/^\d+\.\d+\.\d+$/)) {
+        console.warn(`WARNING! Build number is not currently supported for prefilledInput: true, using 'latest' instead`);
+        build = 'latest';
+    }
     const { buildId } = actorInfo.taggedBuilds[build];
 
     const buildInfo = await client.build(buildId).get();
@@ -99,7 +104,6 @@ const setupRun = async (Apify, client, verboseLogs = false, retryFailedTests = f
                 ...options,
                 waitSecs: 0,
             });
-
 
             const { name: actorName } = await client.actor(runInfo.actId).get();
             const { name: taskName } = isTask && taskId ? await client.task(taskId).get() : {};
