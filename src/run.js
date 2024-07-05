@@ -48,10 +48,10 @@ const getActorInputInfo = async (client, actorId, build = 'latest') => {
 };
 
 /**
- * @param {{ Apify: ApifyNM, client: ApifyClient, verboseLogs: boolean, retryFailedTests: boolean, input: Record<string, any>}}
+ * @param {{ Apify: ApifyNM, client: ApifyClient, verboseLogs: boolean, retryFailedTests: boolean, customData: Record<string, any>}}
  * @return {Promise<common.Runner>}
  */
-const setupRun = async ({ Apify, client, verboseLogs = false, retryFailedTests = false, input }) => {
+const setupRun = async ({ Apify, client, verboseLogs = false, retryFailedTests = false, customData = {} }) => {
     const hasher = quickHash();
 
     const kv = await Apify.openKeyValueStore();
@@ -92,7 +92,7 @@ const setupRun = async ({ Apify, client, verboseLogs = false, retryFailedTests =
             || defaultObj.resultsLimit;
 
         // We resolve the build from string or object <actorOrTaskId>:<build> passed in input but user options have preference
-        const buildFromInput = input.customData?.build?.[actorId || taskId] || input.customData.build;
+        const buildFromInput = typeof customData.build === 'string' ? customData.build : customData.build?.[actorId || taskId];
         const build = buildFromInput || options.build || 'latest';
 
         console.log(`Using build ${build} for ${actorId || taskId}`);
