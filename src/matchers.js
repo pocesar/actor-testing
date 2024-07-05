@@ -275,7 +275,7 @@ const withDataset = generateCompare(async ({ result, value, args, client, format
 
     const [info, dataset] = await Promise.all([
         client.dataset(result.data.defaultDatasetId).get(),
-        client.dataset(result.data.defaultDatasetId).listItems({ ...options }),
+        client.dataset(result.data.defaultDatasetId).listItems({ ...options, clean: true }),
     ]);
 
     // To prevent bugs related to platform needing sleep to update info.itemCount, we hardset it to the actual length of items
