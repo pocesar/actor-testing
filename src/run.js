@@ -91,8 +91,18 @@ const setupRun = async ({ Apify, client, verboseLogs = false, retryFailedTests =
             || defaultObj.maxResults
             || defaultObj.resultsLimit;
 
+        // To match a build to Actor ID, we can get it if the test calls a task
+        let actorIdOfTask;
+        if (isTask) {
+            const task = await client.task(taskId).get();
+            if (!task) {
+                throw new Error(`Task ${taskId} used in the test spec was not found`);
+            }
+            actorIdOfTask = task.actId;
+            console.log(`The task ID ${taskId} to run has actor ID ${actorIdOfTask} that is used to determine the build`);
+        }
         // We resolve the build from string or object <actorOrTaskId>:<build> passed in input but user options have preference
-        const buildFromInput = typeof customData.build === 'string' ? customData.build : customData.build?.[actorId || taskId];
+        const buildFromInput = typeof customData.build === 'string' ? customData.build : customData.build?.[actorId || actorIdOfTask];
         const build = buildFromInput || options.build || 'latest';
 
         console.log(`Using build ${build} for ${actorId || taskId}`);
