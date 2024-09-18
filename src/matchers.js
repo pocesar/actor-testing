@@ -3,40 +3,58 @@ import Jasmine from 'jasmine'; // eslint-disable-line no-unused-vars
 import * as common from './common.js'; // eslint-disable-line no-unused-vars
 
 /**
+ * @typedef {(
+ *   param: {
+ *     result: common.Result,
+ *     value: any,
+ *     utils: jasmine.MatchersUtil,
+ *     client: ApifyClient,
+ *     args: any[],
+ *     runFn: common.Runner,
+ *     format: (message: string) => string
+ *   }
+ * ) => Promise<{ pass: boolean, message?: string }>} CompareFunction
+ */
+
+/**
  * Make the comparision composable without boilerplate
  *
- * @param {(param: {
- *  result: common.Result,
- *  value: any,
- *  utils: { equals: (a: any, b: any) => boolean },
- *  client: ApifyClient,
- *  args: any[],
- *  runFn: common.Runner,
- *  format: (message: string) => string
- * }) => Promise<{ pass: boolean, message?: string }>} compare
+ * @param {CompareFunction} compare
+ * @param {ApifyClient} client
+ * @param {common.Runner} runFn
  */
-const generateCompare = (compare) => (/** @type {ApifyClient} */client, /** @type {common.Runner} */runFn) => (utils) => ({
+function generateCompare(compare, client, runFn) {
     /**
-     * @param {common.Result} result
-     * @param {any} value
-     * @param {any[]} args
+     * @param {jasmine.MatchersUtil} utils
+     *
+     * This function is passed to Jasmine, which then later instantiates the Matcher with the utils object
      */
-    async compare(result, value, ...args) {
-        if (!common.isRunResult(result)) {
-            throw new Error('Invalid usage of expectAsync on non-run result. Did you forget to run()?');
-        }
+    return function (utils) {
+        // The Matcher:
+        return {
+            /**
+             * @param {common.Result} result
+             * @param {any} value
+             * @param {any[]} args
+             */
+            async compare(result, value, ...args) {
+                if (!common.isRunResult(result)) {
+                    throw new Error('Invalid usage of expectAsync on non-run result. Did you forget to run()?');
+                }
 
-        return compare({
-            result,
-            value,
-            args,
-            utils,
-            client,
-            runFn,
-            format: common.formatRunMessage(result),
-        });
-    },
-});
+                return compare({
+                    result,
+                    value,
+                    args,
+                    utils,
+                    client,
+                    runFn,
+                    format: common.formatRunMessage(result),
+                });
+            },
+        };
+    };
+}
 
 /**
  * toString() a function if given as a parameter, or return itself
@@ -74,19 +92,20 @@ const callbackValue = async ({ value, args, format }) => {
  */
 const safeOptions = (args) => args.shift() || {};
 
-const toHaveStatus = generateCompare(async ({ result, value, utils, client, format }) => {
+/** @type {CompareFunction} */
+const toHaveStatus = async ({ result, value, utils, client, format }) => {
     const run = await client.run(result.runId).get();
 
     return {
         pass: utils.equals(run.status, value),
         message: format(`Expected status to be "${value}", got "${run.status}"`),
     };
-});
+};
 
 /**
  * Retrieve the run log
  */
-const withLog = generateCompare(async ({ result, value, client, format }) => {
+const withLog = async ({ result, value, client, format }) => {
     const log = await client.log(result.runId).get();
 
     return callbackValue({
@@ -94,12 +113,13 @@ const withLog = generateCompare(async ({ result, value, client, format }) => {
         args: log,
         format,
     });
-});
+};
 
 /**
+ * @type {CompareFunction}
  * Executes lukaskrivka/results-checker with the provided taskId or with input
  */
-const withChecker = generateCompare(async ({ result, value, args, runFn, client, format }) => {
+const withChecker = async ({ result, value, args, runFn, client, format }) => {
     const taskArgs = safeOptions(args);
     const options = safeOptions(args);
     const isTask = !!taskArgs.taskId;
@@ -137,12 +157,13 @@ const withChecker = generateCompare(async ({ result, value, args, runFn, client,
         args: { runResult, output: record.value || {} },
         format,
     });
-});
+};
 
 /**
+ * @type {CompareFunction}
  * Run the duplications-checker actor and get it's result
  */
-const withDuplicates = generateCompare(async ({ result, value, args, runFn, client, format }) => {
+const withDuplicates = async ({ result, value, args, runFn, client, format }) => {
     const input = safeOptions(args);
     const options = safeOptions(args);
 
@@ -180,12 +201,13 @@ const withDuplicates = generateCompare(async ({ result, value, args, runFn, clie
         args: { runResult, output: record.value || {} },
         format,
     });
-});
+};
 
 /**
+ * @type {CompareFunction}
  * Access the KV OUTPUT directly
  */
-const withOutput = generateCompare(async ({ result, value, client, format }) => {
+const withOutput = async ({ result, value, client, format }) => {
     const record = await client.keyValueStore(result.data.defaultKeyValueStoreId).getRecord('OUTPUT');
 
     if (!record) {
@@ -200,12 +222,13 @@ const withOutput = generateCompare(async ({ result, value, client, format }) => 
         args: record,
         format,
     });
-});
+};
 
 /**
+ * @type {CompareFunction}
  * Access the KV Statistics, at index 0
  */
-const withStatistics = generateCompare(async ({ result, value, client, format, args }) => {
+const withStatistics = async ({ result, value, client, format, args }) => {
     const options = safeOptions(args);
     const index = options.index || 0;
 
@@ -223,12 +246,13 @@ const withStatistics = generateCompare(async ({ result, value, client, format, a
         args: record.value || {},
         format,
     });
-});
+};
 
 /**
+ * @type {CompareFunction}
  * Access any key from the KV store
  */
-const withKeyValueStore = generateCompare(async ({ result, value, client, format, args }) => {
+const withKeyValueStore = async ({ result, value, client, format, args }) => {
     const options = safeOptions(args);
 
     if (!options.keyName || typeof options.keyName !== 'string') {
@@ -252,12 +276,13 @@ const withKeyValueStore = generateCompare(async ({ result, value, client, format
         args: record,
         format,
     });
-});
+};
 
 /**
+ * @type {CompareFunction}
  * Access the result default requestQueue
  */
-const withRequestQueue = generateCompare(async ({ result, value, client, format }) => {
+const withRequestQueue = async ({ result, value, client, format }) => {
     const requestQueue = await client.requestQueue(result.data.defaultRequestQueueId).get();
 
     return callbackValue({
@@ -265,12 +290,13 @@ const withRequestQueue = generateCompare(async ({ result, value, client, format 
         args: requestQueue,
         format,
     });
-});
+};
 
 /**
+ * @type {CompareFunction}
  * Access the result default dataset
  */
-const withDataset = generateCompare(async ({ result, value, args, client, format }) => {
+const withDataset = async ({ result, value, args, client, format }) => {
     const options = safeOptions(args);
 
     const [info, dataset] = await Promise.all([
@@ -289,7 +315,19 @@ const withDataset = generateCompare(async ({ result, value, args, client, format
         args: { dataset, info },
         format,
     });
-});
+};
+
+const matcherFunctions = {
+    toHaveStatus,
+    withLog,
+    withDuplicates,
+    withChecker,
+    withDataset,
+    withOutput,
+    withKeyValueStore,
+    withRequestQueue,
+    withStatistics,
+};
 
 /**
  * @param {Jasmine} jasmine
@@ -297,15 +335,11 @@ const withDataset = generateCompare(async ({ result, value, args, client, format
  * @param {common.Runner} runFn
  */
 export const setupJasmine = (jasmine, client, runFn) => {
-    jasmine.env.addAsyncMatchers({
-        toHaveStatus: toHaveStatus(client, runFn),
-        withLog: withLog(client, runFn),
-        withDuplicates: withDuplicates(client, runFn),
-        withChecker: withChecker(client, runFn),
-        withDataset: withDataset(client, runFn),
-        withOutput: withOutput(client, runFn),
-        withKeyValueStore: withKeyValueStore(client, runFn),
-        withRequestQueue: withRequestQueue(client, runFn),
-        withStatistics: withStatistics(client, runFn),
-    });
+    /** @type {jasmine.CustomAsyncMatcherFactories} */
+    const curriedMatchers = {};
+    for (const [key, function_] of Object.entries(matcherFunctions)) {
+        curriedMatchers[key] = generateCompare(function_, client, runFn);
+    }
+
+    jasmine.env.addAsyncMatchers(curriedMatchers);
 };

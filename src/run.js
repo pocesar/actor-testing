@@ -105,9 +105,10 @@ const setupRun = async ({ Apify, client, verboseLogs = false, retryFailedTests =
         }
         // We resolve the build from string or object <actorOrTaskId>:<build> passed in input but user options have preference
         const buildFromInput = typeof customData.build === 'string' ? customData.build : customData.build?.[actorId || actorIdOfTask];
-        const build = buildFromInput || options.build || 'latest';
+        const build = buildFromInput || options.build || undefined;
 
-        console.log(`Using build ${build} for ${actorId || taskId}`);
+        const niceBuildName = build === undefined ? 'default build' : `build ${build}`;
+        console.log(`Using ${niceBuildName} for ${actorId || taskId}`);
 
         if (!runMap.has(id)) {
             // looks duplicated code, but we need to run it once,
@@ -142,6 +143,10 @@ const setupRun = async ({ Apify, client, verboseLogs = false, retryFailedTests =
         const { runId } = runResult;
         const url = common.createRunLink({ actorId, taskId, runId });
 
+        // add context to the currently running test spec, so that we can print the URL even if the spec fails on a vanilla Jasmine expect() call
+        // we might want to add multiple run links, but there's no such thing as getSpecProperty or appending to array, so we just add multiple entries with random keys
+        global.setSpecProperty(`relatedRunLink-${id}`, url);
+
         if (verboseLogs) {
             Apify.utils.log.info(
                 `Waiting ${isTask ? `task ${taskId}` : `actor ${actorId}`} to finish: ${url}`,
@@ -169,7 +174,10 @@ const setupRun = async ({ Apify, client, verboseLogs = false, retryFailedTests =
 
         return {
             ...runResult,
+
+            // afaik we don't use this anywhere in this Actor itself, but the example input code does:
             format: common.formatRunMessage(runResult),
+
             maxResults,
             runInput,
         };

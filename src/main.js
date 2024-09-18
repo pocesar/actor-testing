@@ -2,7 +2,7 @@ import Apify from 'apify';
 import Jasmine from 'jasmine';
 import { ApifyClient } from 'apify-client';
 import escapeRegex from 'escape-string-regexp';
-import { SpecReporter, StacktraceOption } from 'jasmine-spec-reporter';
+import { DisplayProcessor, SpecReporter, StacktraceOption } from 'jasmine-spec-reporter';
 import vm from 'vm';
 import _ from 'lodash';
 import moment from 'moment';
@@ -138,6 +138,21 @@ Apify.main(async () => {
 
     instance.env.clearReporters();
 
+    class PrintRunLink extends DisplayProcessor {
+        displaySummaryErrorMessages(spec, log) {
+            const runLinks = [];
+            for (const [k, v] of Object.entries(spec.properties ?? {})) {
+                // keys `relatedRunLink-{random}` are added with setSpecProperty inside runFn
+                if (k.startsWith('relatedRunLink')) {
+                    runLinks.push(v);
+                }
+            }
+            if (runLinks.length === 0) return log;
+            const title = 'Related runs: ';
+            return `${log}\n${title}${runLinks.join('\n' + ' '.repeat(title.length))}`;
+        }
+    }
+
     const specReporter = new SpecReporter({ // add jasmine-spec-reporter
         spec: {
             displaySuccessful: false,
@@ -159,6 +174,7 @@ Apify.main(async () => {
                 return stacktrace.split('\n').filter((line) => line.includes(`at ${defaultFilename}`)).join('\n');
             },
         },
+        customProcessors: [PrintRunLink],
     });
 
     instance.addReporter(specReporter);

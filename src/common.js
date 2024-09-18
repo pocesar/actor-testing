@@ -22,6 +22,7 @@ const { log } = Apify.utils;
  *  name?: string,
  *  options?: Parameters<Apify.callTask>[2]
  *  nonce?: string
+ *  prefilledInput?: boolean
  * }} RunParams
  */
 
@@ -38,11 +39,14 @@ const isRunResult = (run) => (
  * @returns {(message: string) => string}
  */
 const formatRunMessage = (runResult) => (message) => {
-    const formatted = `${
-        runResult.data.name ? `${runResult.data.name}\n` : ''
-    }${
-        runResult.data.taskName ? `${runResult.data.taskName} - ${runResult.data.actorName}` : runResult.data.actorName
-    }:${runResult.data.buildNumber}\n${createRunLink({ actorId: runResult.data.actId, taskId: runResult.data.taskId, runId: runResult.runId })} : ${message}`;
+    const namePart = runResult.data.name ? `${runResult.data.name}\n` : '';
+    const taskOrActorPart = runResult.data.taskName ? `${runResult.data.taskName} - ${runResult.data.actorName}` : runResult.data.actorName;
+    const runLink = createRunLink({
+        actorId: runResult.data.actId,
+        taskId: runResult.data.taskId,
+        runId: runResult.runId,
+    });
+    const formatted = `${namePart}${taskOrActorPart}:${runResult.data.buildNumber}\n${runLink} : ${message}`;
     return formatted;
 };
 
