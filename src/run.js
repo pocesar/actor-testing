@@ -145,7 +145,13 @@ const setupRun = async ({ Apify, client, verboseLogs = false, retryFailedTests =
 
         // add context to the currently running test spec, so that we can print the URL even if the spec fails on a vanilla Jasmine expect() call
         // we might want to add multiple run links, but there's no such thing as getSpecProperty or appending to array, so we just add multiple entries with random keys
-        global.setSpecProperty(`relatedRunLink-${id}`, url);
+        try {
+            global.setSpecProperty(`relatedRunLink-${id}`, url);
+        } catch (e) {
+            // pass
+            // run() might be run outside of a spec (`it()` block), and I'm not sure how to better detect this than with a try-catch
+            // see also https://apify.slack.com/archives/C06MY7SS97C/p1727098499285779
+        }
 
         if (verboseLogs) {
             Apify.utils.log.info(
