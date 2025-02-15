@@ -11,18 +11,29 @@ const quickHash = () => {
 /**
  * @param {ApifyClient} client
  * @param {string} actorId
- * @param {string} build
+ * @param {string | undefined} buildId
  * @return {Promise<{ defaultObj: Record<string, any>, prefill: Record<string, any> }>}
  */
-const getActorInputInfo = async (client, actorId, build = 'latest') => {
-    const actorInfo = await client.actor(actorId).get();
+const getActorInputInfo = async (client, actorId, buildId) => {
+    // Either we get buildId from GitHub CI for PRs or we assume we need to fetch default version build
+    // We hav to do either of those because without token, you cannot use build numbers
+    if (!buildId) {
+        const actorInfo = await client.actor(actorId).get();
+        // All Actors should have default build but if someone forgot completely, we just don't prefill
+        const defaultBuildTag = actorInfo?.defaultRunOptions.build;
 
-    // FIXME: This will not work with build numbers, we need to use different API for that (not sure if possible without token?)
-    if (build.match(/^\d+\.\d+\.\d+$/)) {
-        console.warn(`WARNING! Build number is not currently supported for prefilledInput: true, using 'latest' instead`);
-        build = 'latest';
+        console.log(`Using default build ${defaultBuildTag} for actor ${actorId}`);
+        console.log(`Actor info: ${JSON.stringify(actorInfo, null, 2)}`);
+
+        const buildObj = actorInfo.taggedBuilds[defaultBuildTag || ''];
+        if (!buildObj) {
+            return {
+                defaultObj: {},
+                prefill: {},
+            };
+        }
+        buildId = buildObj.buildId;
     }
-    const { buildId } = actorInfo.taggedBuilds[build];
 
     const buildInfo = await client.build(buildId).get();
 
@@ -82,17 +93,6 @@ const setupRun = async ({ Apify, client, verboseLogs = false, retryFailedTests =
         const isTask = !!taskId;
         const id = hasher(JSON.stringify({ ...run, retryFailedTests }));
 
-        const { defaultObj = {}, prefill = {} } = prefilledInput ? await getActorInputInfo(client, actorId, options.build) : {};
-
-        // TODO: This just lists some common max results fields we use but there is plenty more
-        // Devs should use 'runInput' to calculate that themselves if they are not sure
-        const maxResults = input.maxResults
-            || input.resultsLimit
-            || prefill.maxResults
-            || prefill.resultsLimit
-            || defaultObj.maxResults
-            || defaultObj.resultsLimit;
-
         // To match a build to Actor ID, we can get it if the test calls a task
         let actorIdOfTask;
         if (isTask) {
@@ -109,6 +109,20 @@ const setupRun = async ({ Apify, client, verboseLogs = false, retryFailedTests =
 
         const niceBuildName = build === undefined ? 'default build' : `build ${build}`;
         console.log(`Using ${niceBuildName} for ${actorId || taskId}`);
+
+        // buildIds are passed in by GitHub CI for PR tests
+        const buildId = customData?.buildIds?.[actorId || actorIdOfTask] || undefined;
+
+        const { defaultObj = {}, prefill = {} } = prefilledInput ? await getActorInputInfo(client, actorId, buildId) : {};
+
+        // TODO: This just lists some common max results fields we use but there is plenty more
+        // Devs should use 'runInput' to calculate that themselves if they are not sure
+        const maxResults = input.maxResults
+            || input.resultsLimit
+            || prefill.maxResults
+            || prefill.resultsLimit
+            || defaultObj.maxResults
+            || defaultObj.resultsLimit;
 
         if (!runMap.has(id)) {
             // looks duplicated code, but we need to run it once,
