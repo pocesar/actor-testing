@@ -22,9 +22,6 @@ const getActorInputInfo = async (client, actorId, buildId) => {
         // All Actors should have default build but if someone forgot completely, we just don't prefill
         const defaultBuildTag = actorInfo?.defaultRunOptions.build;
 
-        console.log(`Using default build ${defaultBuildTag} for actor ${actorId}`);
-        console.log(`Actor info: ${JSON.stringify(actorInfo, null, 2)}`);
-
         const buildObj = actorInfo.taggedBuilds[defaultBuildTag || ''];
         if (!buildObj) {
             return {
