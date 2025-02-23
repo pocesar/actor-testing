@@ -172,7 +172,8 @@ const setupRun = async ({ Apify, client, verboseLogs = false, retryFailedTests =
         }
 
         await persistState();
-        await client.run(runId).waitForFinish();
+        // Update run results with stats from finished run
+        runResult.data = { ...runResult.data, ...await client.run(runId).waitForFinish() };
 
         // We fetch the actual input which will include defaults added by platform so devs can use it
         const runInput = (await client.keyValueStore(runResult.data.defaultKeyValueStoreId).getRecord('INPUT'))?.value || {};
