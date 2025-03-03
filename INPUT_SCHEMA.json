@@ -79,6 +79,13 @@
             "type": "string",
             "editor": "textfield"
         },
+        "slackPrefix": {
+            "title": "Slack prefix",
+            "description": "This string will be prepended to all slack messages",
+            "prefill": "@lead-dev @actor-owner",
+            "type": "string",
+            "editor": "textfield"
+        },
         "token": {
             "title": "Token",
             "description": "Optional account token",

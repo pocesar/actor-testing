@@ -1,4 +1,4 @@
-const Apify = require('apify');
+import Apify from 'apify';
 
 const { log } = Apify.utils;
 
@@ -6,15 +6,7 @@ const { log } = Apify.utils;
  * @typedef {{
  *   runId: string,
  *   hashCode: string,
- *   data: Pick<Apify.ActorRun,
- *      | 'actId'
- *      | 'defaultDatasetId'
- *      | 'defaultKeyValueStoreId'
- *      | 'defaultRequestQueueId'
- *      | 'id'
- *      | 'buildNumber'
- *      | 'stats'
- *   > & { actorName: string, taskName?: string, name?: string, taskId?: string },
+ *   data: Apify.ActorRun & { actorName: string, taskName?: string, name?: string, taskId?: string },
  * }} Result
  */
 
@@ -30,6 +22,7 @@ const { log } = Apify.utils;
  *  name?: string,
  *  options?: Parameters<Apify.callTask>[2]
  *  nonce?: string
+ *  prefilledInput?: boolean
  * }} RunParams
  */
 
@@ -46,11 +39,14 @@ const isRunResult = (run) => (
  * @returns {(message: string) => string}
  */
 const formatRunMessage = (runResult) => (message) => {
-    const formatted = `${
-        runResult.data.name ? `${runResult.data.name}\n` : ''
-    }${
-        runResult.data.taskName ? `${runResult.data.taskName} - ${runResult.data.actorName}` : runResult.data.actorName
-    }:${runResult.data.buildNumber}\n${createRunLink({ actorId: runResult.data.actId, taskId: runResult.data.taskId, runId: runResult.runId })} : ${message}`;
+    const namePart = runResult.data.name ? `${runResult.data.name}\n` : '';
+    const taskOrActorPart = runResult.data.taskName ? `${runResult.data.taskName} - ${runResult.data.actorName}` : runResult.data.actorName;
+    const runLink = createRunLink({
+        actorId: runResult.data.actId,
+        taskId: runResult.data.taskId,
+        runId: runResult.runId,
+    });
+    const formatted = `${namePart}${taskOrActorPart}:${runResult.data.buildNumber}\n${runLink} : ${message}`;
     return formatted;
 };
 
@@ -144,7 +140,7 @@ const nameBreak = () => {
 /**
  * Notify Slack / Email
  *
- * @param {{ slackToken?: string, slackChannel?: string, email?: string }} input
+ * @param {{ slackToken?: string, slackChannel?: string, email?: string, slackPrefix?: string }} input
  * @returns {(params: { emailMessage?: string, slackMessage?: string, subject?: string }) => Promise<void>}
  */
 const createNotifier = (input) => {
@@ -153,10 +149,11 @@ const createNotifier = (input) => {
             log.info(`Posting to channel ${input.slackChannel}`);
 
             try {
+                const slackPrefix = input.slackPrefix ? `${input.slackPrefix} ` : '';
                 await Apify.call('katerinahronik/slack-message', {
                     token: input.slackToken,
                     channel: input.slackChannel,
-                    text: slackMessage,
+                    text: `${slackPrefix}${slackMessage}`,
                 }, {
                     fetchOutput: false,
                     waitSecs: 1,
@@ -186,7 +183,7 @@ const createNotifier = (input) => {
     };
 };
 
-module.exports = {
+export {
     formatRunMessage,
     isRunResult,
     nameBreak,

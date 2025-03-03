@@ -1,16 +1,18 @@
-const Apify = require('apify');
-const Jasmine = require('jasmine');
-const { ApifyClient } = require('apify-client');
-const escapeRegex = require('escape-string-regexp');
-const { SpecReporter, StacktraceOption } = require('jasmine-spec-reporter');
-const vm = require('vm');
-const _ = require('lodash');
-const moment = require('moment');
-const Loader = require('jasmine/lib/loader');
-const { setupJasmine } = require('./matchers');
-const setupRun = require('./run');
-const JSONReporter = require('./collector');
-const { collectFailed, nameBreak, createNotifier, createRunLink } = require('./common');
+import Apify from 'apify';
+import Jasmine from 'jasmine';
+import { ApifyClient } from 'apify-client';
+import escapeRegex from 'escape-string-regexp';
+import { DisplayProcessor, SpecReporter, StacktraceOption } from 'jasmine-spec-reporter';
+import vm from 'vm';
+import _ from 'lodash';
+import moment from 'moment';
+import { type } from 'arktype';
+import { parseAsSchema } from '@arktype/schema';
+import Loader from 'jasmine/lib/loader.js';
+import { setupJasmine } from './matchers.js';
+import setupRun from './run.js';
+import JSONReporter from './collector.js';
+import { collectFailed, nameBreak, createNotifier, createRunLink } from './common.js';
 
 const { log } = Apify.utils;
 
@@ -28,6 +30,7 @@ Apify.main(async () => {
         isTimeoutSignal = false,
         retryFailedTests = false,
         abortRuns = true,
+        customData = {},
     } = input;
 
     /** @type {string} */
@@ -108,6 +111,7 @@ Apify.main(async () => {
                 ...(actorTaskId ? {} : {
                     slackToken: input.slackToken,
                     slackChannel: input.slackChannel,
+                    slackPrefix: input.slackPrefix,
                     email: input.email,
                     token,
                     testName,
@@ -125,7 +129,7 @@ Apify.main(async () => {
         loader: new Loader({
             requireShim: (filename) => {
                 if (filename === 'jasmine-expect') {
-                    return require('jasmine-expect'); // eslint-disable-line
+                    return import('jasmine-expect'); // eslint-disable-line
                 }
                 return Promise.resolve();
             },
@@ -133,6 +137,21 @@ Apify.main(async () => {
     });
 
     instance.env.clearReporters();
+
+    class PrintRunLink extends DisplayProcessor {
+        displaySummaryErrorMessages(spec, log) {
+            const runLinks = [];
+            for (const [k, v] of Object.entries(spec.properties ?? {})) {
+                // keys `relatedRunLink-{random}` are added with setSpecProperty inside runFn
+                if (k.startsWith('relatedRunLink')) {
+                    runLinks.push(v);
+                }
+            }
+            if (runLinks.length === 0) return log;
+            const title = 'Related runs: ';
+            return `${log}\n${title}${runLinks.join('\n' + ' '.repeat(title.length))}`;
+        }
+    }
 
     const specReporter = new SpecReporter({ // add jasmine-spec-reporter
         spec: {
@@ -155,6 +174,7 @@ Apify.main(async () => {
                 return stacktrace.split('\n').filter((line) => line.includes(`at ${defaultFilename}`)).join('\n');
             },
         },
+        customProcessors: [PrintRunLink],
     });
 
     instance.addReporter(specReporter);
@@ -215,7 +235,7 @@ Apify.main(async () => {
     instance.addReporter(jsonReporter);
 
     jasmine.DEFAULT_TIMEOUT_INTERVAL = defaultTimeout;
-    const runFn = await setupRun(Apify, client, verboseLogs, retryFailedTests);
+    const runFn = await setupRun({ Apify, client, verboseLogs, retryFailedTests, customData });
 
     // jasmine executes everything as global, so we just eval it here
     ((context) => {
@@ -238,12 +258,17 @@ Apify.main(async () => {
 
             script.runInThisContext()({
                 ...context,
+                jasmine,
                 input: {
                     ...input,
                     customData: input.customData || {},
                 },
                 _,
                 moment,
+                Apify,
+                apifyClient: client,
+                type,
+                parseAsSchema,
             });
         });
     })({

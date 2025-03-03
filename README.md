@@ -35,6 +35,8 @@ The testing interface is familiar with Jasmine BDD tests, but with Apify specifi
     expect, // default Jasmine expect
     _, // lodash as a helper to traverse array items and objects
     moment // Moment.JS to help with dates and time math
+    Apify // Apify SDK v2
+    apifyClient // Apify client v2
 }) => {
 
   // describe is not needed, but it's good to keep everything tidy
@@ -131,6 +133,20 @@ const result = await run({
 ```
 
 The `run` is idempotent and will run the same tasks once per test, but you can specify the `nonce` to force running it everytime
+
+The `run` function returns an object with standard API client run info with extra data:
+```js
+runResult = {
+    runInput, // Actual input of the run with default fields filled
+    maxResults, // Attempts at parsing maxResults or similar field from input (use runInput to do this yourself)
+    data: {
+        ...runInfo,
+        taskId,
+        actorName,
+        taskName,
+        name: run.name,
+    }
+```
 
 ## Matchers
 
