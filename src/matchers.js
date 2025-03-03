@@ -29,7 +29,7 @@ function generateCompare(compare, client, runFn) {
      *
      * This function is passed to Jasmine, which then later instantiates the Matcher with the utils object
      */
-    return function (utils) {
+    return function(utils) {
         // The Matcher:
         return {
             /**
@@ -114,6 +114,21 @@ const withLog = async ({ result, value, client, format }) => {
         format,
     });
 };
+
+/**
+ * Retrieve the run info
+ */
+const withRunInfo = async ({ result, value, client, format }) => {
+    // stuff like `run.chargedEventCounts` may be updated couple seconds after the run is finished so we wait 10 seconds
+    await new Promise(res => setTimeout(res, 10_000))
+    const runInfo = await client.run(result.runId).get();
+
+    return callbackValue({
+        value,
+        args: runInfo,
+        format,
+    })
+}
 
 /**
  * @type {CompareFunction}
@@ -326,6 +341,7 @@ const matcherFunctions = {
     withOutput,
     withKeyValueStore,
     withRequestQueue,
+    withRunInfo,
     withStatistics,
 };
 
