@@ -16,10 +16,10 @@
         "xxhash-addon": "^1.4.0"
     },
     "devDependencies": {
-        "@apify/eslint-config": "^0.1.4",
+        "@apify/eslint-config": "^1.1.0",
         "@types/jasmine": "^3.10.2",
         "@types/lodash": "^4.14.176",
-        "eslint": "^7.32.0"
+        "eslint": "^9.39.1"
     },
     "scripts": {
         "start": "node src/main.js",
